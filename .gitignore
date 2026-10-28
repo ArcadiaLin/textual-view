@@ -1,0 +1,86 @@
+# Local reference material. Track source metadata, not binaries or full clones.
+/references/papers/
+/references/repos/
+/references/datasets/
+
+# External data, model weights, and caches.
+# 本地研究数据与产物；代码、配置和文献元数据保持跟踪。
+/data/
+/models/
+/checkpoints/
+/cache/
+# packages/arxiv2md 抓取的 arXiv HTML 缓存（默认 cwd 下，可用 ARXIV2MD_CACHE_PATH 改）
+.arxiv2md_cache/
+
+# Generated experiment output. Keep experiment code and configs under experiments/ tracked.
+/runs/
+/results/
+/tmps/
+
+# Per-config pi conversation history.
+/pi-configs/*/sessions/
+
+# Per-config pi agent dir (symlinks to local credentials, generated caches).
+# Each config's own models.json stays tracked.
+/pi-configs/*/agent/*
+!/pi-configs/*/agent/models.json
+
+# Node.js dependencies, build output, and profiling artifacts.
+node_modules/
+dist/
+coverage/
+.npm/
+*.tsbuildinfo
+*.cpuprofile
+/outputs/
+/artifacts/
+/wandb/
+/mlruns/
+/scratch/
+
+# Secrets and machine-local configuration.
+.env
+.env.*
+!.env.example
+
+# Python environments, bytecode, test, type-checker, and build caches.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.pyright/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Jupyter checkpoints. Notebook 本体跟踪，提交时清理输出；目前未安装 Git filter。
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# Editors and operating-system noise.
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files.
+*.log
+*.tmp
+*.swp
+*~
+
+# notebook 旁的探索产物：只是 notebook 跑出来的中间结果，不是流水线工件
+# （流水线工件在 data/processed/，带 _provenance）。
+experiments/*/notebooks/_scratch/
+system/notebooks/_scratch/
+eval/notebooks/_scratch/
+
+# Machine-local agent configuration and credentials. Project skills remain tracked.
+/.codex/
+/.aws/

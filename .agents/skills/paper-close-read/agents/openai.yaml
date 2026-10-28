@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paper Close Read"
+  short_description: "Read a paper through its motivation, method, and contribution"
+  default_prompt: "Use $paper-close-read to explain why this paper was needed, how its central idea works, and what it contributes, weaving relevant figures and evidence into a coherent close reading with a flexible structure."
