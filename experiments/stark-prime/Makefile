@@ -4,7 +4,7 @@ STARK_REPO := ../../references/repos/stark
 INDEX := ../../data/stark-prime/bm25
 RUN := ../../runs/stark-prime/$(shell date -u +%Y%m%dT%H%M%SZ)
 
-.PHONY: setup index test pilot
+.PHONY: setup index test pilot resume
 setup:
 	uv sync --frozen --python /usr/bin/python3
 
@@ -16,3 +16,7 @@ test:
 
 pilot:
 	$(PYTHON) batch.py --data-root $(DATA) --index $(INDEX) --output $(RUN) --count 10 --workers 2 --timeout 180 --max-turns 20
+
+resume:
+	@if [ "$(origin RUN)" != "command line" ]; then echo 'Use make resume RUN=<existing run directory>'; exit 2; fi
+	$(PYTHON) batch.py --data-root $(DATA) --index $(INDEX) --output $(RUN) --resume --workers 2

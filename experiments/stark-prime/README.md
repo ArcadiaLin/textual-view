@@ -2,7 +2,7 @@
 
 范围：本机 pi 1.2.0 + SGLang `qwen3.6-35b-a3b`（`http://127.0.0.1:30000/v1`）。
 MCP 只提供 `search` 和 `read_document`；不使用 embedding，不提供图遍历。
-这是验证链路的小规模试跑，不是正式 benchmark 或 STaRK 论文结果复现。
+最初验证采用 10 题试跑；运行器也支持选定划分的完整评测。这里不声称复现 STaRK 论文结果。
 
 ## 启动
 
@@ -31,6 +31,47 @@ make pilot
   --output /tmp/stark-prime/manual-query-11163 \
   --split val --query-id 11163 --timeout 180 --max-turns 20
 ```
+
+## 划分选择与断点续跑
+
+运行官方 10% 测试子集（280 题）的命令如下；本次实现续跑时未启动此评测。
+完整测试集用 `--split test --all`，人工题用 `--split human_generated_eval --all`。
+
+```bash
+.venv/bin/python batch.py \
+  --data-root ../../references/datasets/stark \
+  --index ../../data/stark-prime/bm25 \
+  --output ../../runs/stark-prime/test-10pct \
+  --split test-0.1 --all --workers 2 --timeout 180 --max-turns 20
+```
+
+中断后指定同一个输出目录即可继承原来的划分、抽样和预算：
+
+```bash
+make resume RUN=../../runs/stark-prime/test-10pct
+```
+
+直接调用 `batch.py` 时添加 `--resume`；可以通过 `--workers` 调整并行数。
+行为规则如下：
+
+- `scored`：始终跳过，包括零分、空列表、带格式违规标记的结果；缺少已评分产物时报错，
+  不会静默重跑。有效最终答案不会因分数不佳而重新选择。
+- `failed` / `parse_failed`：默认保留并计零；只有显式 `--resume --retry-failed` 才新建 attempt。
+  每次调用最多为这些题增加一次 attempt，不自动反复重试。
+- 未完成或 `interrupted`：若完整回复及完成状态已落盘，恢复评分，无需再调用模型；
+  否则保留旧记录，创建 `attempt_002` 等新目录继续。汇总成本包含历史尝试。
+- Ctrl+C / SIGTERM：停止派发新题，中断正在运行的 pi，保存已有事件和状态。
+  强制结束留下的 pi 进程在恢复时按 PID、启动时间及进程组核对后清理，避免重复执行。
+- 原始 RPC 日志仍在独立运行目录持续落盘，每题结束或中断后归档。
+  若强制结束前尚未归档，恢复时从记录的运行目录找回；若 `/tmp` 已被清理，则保留剩余记录并新建 attempt。
+- JSON 检查点原子写入；每题完成后更新汇总。文件锁禁止两个批处理同时使用同一输出目录。
+  BM25 的每题结果也有检查点，恢复时复用。
+- `protocol.json` 冻结题目集合、数据/索引指纹、模型配置、提示、代码、依赖及预算；
+  任一变化都要求新输出目录。每次启动的并行数与显式重试操作另存 `invocations/`。
+
+历史 `20261030-prime-pilot` 保持原样；它没有续跑协议文件，不会被新运行器原地接管。
+`test-0.1` 和 `test` 的题目集合不同，也不能通过续跑把一个结果目录原地扩展为另一个集合。
+运行器没有自动重试低分题或自动跨结果目录复用的行为。
 
 ## pi 配置与手动交互
 
@@ -74,6 +115,9 @@ Prime 所有十种节点类型均为候选，共 129,375 个。
 ```text
 runs/stark-prime/<run>/
 ├── selection.json             # 固定抽样和预算
+├── protocol.json              # 用于续跑检查的冻结条件
+├── invocations/               # 各次启动的并行数、续跑/重试选项
+├── baseline/                  # 每道题的 BM25 检查点
 ├── baseline.json              # 同题原问题调用 BM25 一次，top-100
 ├── summary.json               # 宏平均；失败题计零
 └── <query_id>/attempt_001/

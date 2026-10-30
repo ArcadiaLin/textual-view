@@ -22,7 +22,29 @@ ROOT = Path(__file__).resolve().parent
 
 
 def save(path, value):
-    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + '\n')
+    """Publish complete JSON records atomically, including on interruption."""
+    path = Path(path)
+    with tempfile.NamedTemporaryFile(mode='w', dir=path.parent, prefix=path.name + '.',
+                                     suffix='.tmp', delete=False) as stream:
+        temporary = Path(stream.name)
+        try:
+            json.dump(value, stream, indent=2, ensure_ascii=False)
+            stream.write('\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        except BaseException:
+            temporary.unlink(missing_ok=True)
+            raise
+    temporary.replace(path)
+
+
+def process_start(pid):
+    """Linux process identity, so an orphan check cannot target a reused PID."""
+    try:
+        fields = Path(f'/proc/{pid}/stat').read_text().rpartition(') ')[2].split()
+        return None if fields[0] == 'Z' else fields[19]
+    except (FileNotFoundError, ProcessLookupError):
+        return None
 
 
 def extract_final(last_assistant):
@@ -67,7 +89,7 @@ def prepare(attempt, query, split, query_id, index):
     return prompt
 
 
-async def run_rpc(attempt, prompt, timeout, max_turns):
+async def run_rpc(attempt, prompt, timeout, max_turns, stop_event=None):
     command = ['pi', '--mode', 'rpc', '--session-dir', str(attempt / 'sessions'),
                '--tools', 'mcp__stark_prime__*', '--no-skills', '--no-prompt-templates', '--no-themes']
     env = dict(os.environ, PI_CODING_AGENT_DIR=str(attempt / 'agent'),
@@ -81,6 +103,8 @@ async def run_rpc(attempt, prompt, timeout, max_turns):
         process = await asyncio.create_subprocess_exec(*command, cwd=attempt / 'work', env=env,
             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=errors,
             start_new_session=True, limit=16 * 1024 * 1024)
+        state.update(pid=process.pid, process_start=process_start(process.pid))
+        save(attempt / 'state.json', state)
 
         async def send(value):
             process.stdin.write(json.dumps(value).encode() + b'\n')
@@ -127,12 +151,26 @@ async def run_rpc(attempt, prompt, timeout, max_turns):
                         raise RuntimeError('Settled without accepted prompt')
                     return extract_final(state['last_assistant'])
 
+        async def interruptible_consume():
+            task = asyncio.create_task(consume())
+            try:
+                while not task.done():
+                    if stop_event is not None and stop_event.is_set():
+                        raise InterruptedError('Batch interrupted; preserve this attempt for resume')
+                    await asyncio.wait({task}, timeout=0.2)
+                return task.result()
+            finally:
+                if not task.done():
+                    task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+
         try:
-            final = await asyncio.wait_for(consume(), timeout)
+            final = await asyncio.wait_for(interruptible_consume(), timeout)
             (attempt / 'final.txt').write_text(final + '\n')
             state['status'] = 'completed'
-        except Exception as error:
-            state.update(status='failed', error=f'{type(error).__name__}: {error}')
+        except BaseException as error:
+            interrupted = isinstance(error, (InterruptedError, KeyboardInterrupt, asyncio.CancelledError))
+            state.update(status='interrupted' if interrupted else 'failed', error=f'{type(error).__name__}: {error}')
             raise
         finally:
             state.update(event_counts=dict(counts), usage_raw=dict(usage), wall_seconds=time.monotonic() - started)
@@ -156,7 +194,7 @@ async def run_rpc(attempt, prompt, timeout, max_turns):
     return final, state
 
 
-def run_one(data_root, index, output, split, query_id, timeout=300, max_turns=30):
+def run_one(data_root, index, output, split, query_id, timeout=300, max_turns=30, stop_event=None):
     import numpy as np
     output = Path(output).resolve()
     index = Path(index).resolve()
@@ -180,7 +218,7 @@ def run_one(data_root, index, output, split, query_id, timeout=300, max_turns=30
     save(output / 'result.json', result)
     started = time.monotonic()
     try:
-        final, state = asyncio.run(run_rpc(runtime, prompt, timeout, max_turns))
+        final, state = asyncio.run(run_rpc(runtime, prompt, timeout, max_turns, stop_event))
         result.update(status='completed', tool_calls=state.get('tool_calls', 0),
                       tool_errors=state.get('tool_errors', 0), usage_raw=state['usage_raw'])
         candidates = set(np.load(index / 'candidate_ids.npy', allow_pickle=False).tolist())
@@ -192,7 +230,9 @@ def run_one(data_root, index, output, split, query_id, timeout=300, max_turns=30
         save(output / 'metrics.json', metrics)
         result.update(status='scored', metrics=metrics)
     except Exception as error:
-        result.update(status='parse_failed' if result['status'] == 'parse_failed' else 'failed',
+        status = 'interrupted' if isinstance(error, InterruptedError) else (
+            'parse_failed' if result['status'] == 'parse_failed' else 'failed')
+        result.update(status=status,
                       error=f'{type(error).__name__}: {error}')
         state_path = runtime / 'state.json'
         if state_path.exists():
