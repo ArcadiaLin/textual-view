@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "stark-prime": {
+      "command": "/home/lzx/projs/textual-view/experiments/stark-prime/.venv/bin/python",
+      "args": [
+        "/home/lzx/projs/textual-view/experiments/stark-prime/server.py",
+        "--index",
+        "/home/lzx/projs/textual-view/data/stark-prime/bm25"
+      ],
+      "exposure": "direct",
+      "timeout": 60,
+      "description": "BM25 search and document reading for STaRK-Prime biomedical candidate nodes"
+    }
+  }
+}

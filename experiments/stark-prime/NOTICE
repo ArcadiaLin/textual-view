@@ -1,0 +1,15 @@
+The Prime document renderer and dictionary cleaning in retrieval.py are adapted from
+STaRK, snap-stanford/stark, commit b246b9490b1dc216892ce78303140014506932c1:
+  stark_qa/skb/prime.py (PrimeSKB.get_doc_info, add_rel=False, compact=False)
+  stark_qa/tools/process_text.py (clean_dict)
+BM25 corpus selection, tokenization and ranking follow stark_qa/models/bm25.py.
+
+The scoring conventions and per-attempt artifact organization were adapted from
+DKGI, leopoldwhite/DKGI, local commit 3e1ac81:
+  experiments/stark/task.py
+  experiments/agent_base/base.py
+  experiments/stark/prompt_val/transport/pi_rpc_retry.py
+Current pi 1.2.0 lifecycle handling waits for agent_settled.
+
+STaRK and DKGI are MIT-licensed. Their original license texts are included in
+LICENSE-STARK and LICENSE-DKGI. STaRK source data is CC BY 4.0 and is not included.
