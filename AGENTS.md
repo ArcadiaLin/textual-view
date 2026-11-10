@@ -114,8 +114,8 @@ exists here.
   with provenance rather than relying on notebook outputs.
 - Export and commit frozen notebook HTML snapshots only when the user asks.
 
-## Math in Markdown
+## Math and Mathematical Notation
 
-Use `$...$` for inline formulas and mathematical variables. Use `$$` on separate
-lines for display formulas. Do not put formulas that need rendering in code
-blocks or inline code. Keep code, pseudocode, and API identifiers in code format.
+- Markdown-rendered environments (e.g. VS Code MARKDOWN Preview): Use `$...$` for inline formulas and mathematical variables, and `$$...$$` on separate lines for display formulas. Do not put formulas that need rendering in code blocks or inline code.
+- Terminal-based environments (e.g. CLI agents, Codex, Claude Code): Prefer Unicode mathematical symbols and plain-text expressions to ensure readability in terminals without LaTeX rendering support. For example, use `α`, `β`, `Σ`, `→`, `≈`, `≤`, `x²`, and `O(n log n)` rather than `$...$` or `$$...$$`.
+- General principle: Prioritize readability and compatibility with the target environment. Do not force LaTeX/Markdown math syntax into terminal-based agent communication.
