@@ -8,48 +8,58 @@
 
 ## Recommended Workspace Layout
 
+默认（`mineru-open-api` 可用并已配置 Token）：
+
 ```text
 paper-workdir/
 ├── source.pdf          # 必备：原始材料副本
 ├── analysis.md         # 必备：图文精读成品
-├── paper.txt           # 可选但推荐：带页码标记的提取文本
-└── images/             # 可选但推荐：页面渲染与嵌入图
+├── paper.md            # 推荐：MinerU 结构化 Markdown（含物理页码注释标记、LaTeX 公式与表格）
+├── paper.json          # 推荐：MinerU 块级版面元数据（含 page_idx、bbox、图注）
+├── prep_status.txt     # 准备状态与实际采用的后端记录
+└── images/             # 推荐：自动裁切的论文插图、统计图、表格切图与索引
     ├── index.md
-    ├── img-000.png
-    ├── img-001.png
+    └── <hash>.jpg
+```
+
+本地回退（无 `mineru-open-api`、未配置 Token、网络受限或指定 `--backend pymupdf`）：
+
+```text
+paper-workdir/
+├── source.pdf          # 必备：原始材料副本
+├── analysis.md         # 必备：图文精读成品
+├── paper.txt           # 推荐：带页码标记的 PyMuPDF 提取文本
+├── prep_status.txt     # 准备状态与回退原因记录
+└── images/             # 推荐：整页渲染与嵌入图
+    ├── index.md
+    ├── page-001.png
     └── ...
 ```
 
-如果已有更成熟的目录结构，可以兼容，保留原文来源与精读成品即可：
-
-- `source.pdf` 或等价原文来源
-- `analysis.md`
-
-`paper.txt` 与 `images/`（含图片索引）是 PDF 分支的默认工作材料，缺了它们精读质量会明显下降，但不算结构要求。
+如果已有更成熟的目录结构，可以兼容，保留原文来源（`source.pdf`）与精读成品（`analysis.md`）即可。
 
 ## Material Preparation Order
 
-### 1. 复制原始 PDF
-
-- 保留原始文件，不要直接在用户源目录里修改。
-- 在新的工作目录保留一份 `source.pdf` 或原始文件名副本。
-
-### 2. 提取全文文本
+### 1. 运行统一准备脚本
 
 优先顺序：
 
-1. `uv run scripts/prepare_local_pdf.py <pdf> <out-dir>/` —— 默认路径。依赖（PyMuPDF）写在脚本的 PEP 723 头里，`uv` 首次运行时自动解析并缓存，不装系统包、不建 venv、不需要 sudo。
-2. 没有 uv 时，可用 `python3 scripts/prepare_local_pdf.py <pdf> <out-dir>/` 调用脚本；缺少 PyMuPDF 时会尝试 poppler 兜底，能力更弱且无页码标记
-3. 用户已有的提取文本
-4. 手工拼接的 OCR 或页面截图
+1. `uv run scripts/prepare_local_pdf.py <pdf> <out-dir>/` —— 默认入口：
+   - **优先采用 `mineru-open-api extract --ocr -f md,json`**：当本机已安装 `mineru-open-api` 且 `mineru-open-api auth --verify`（或 `MINERU_TOKEN`）可用时自动启用。它会重排双栏阅读顺序、把行内与块级公式还原为 LaTeX、将表格转为结构化表格，并根据 `paper.json` 的 `page_idx` 在跨页段落边界插入 `<!-- ===== [page N] ===== -->` 标记。默认开启 `--ocr`，避免 PDF 内嵌字体 CMap 造成行内数学符号乱码（``）或连字丢失。
+   - **自动回退 `PyMuPDF`**：若未安装 `mineru-open-api`、未配置 Token 或云端解析失败，脚本自动使用 PEP 723 声明的 `PyMuPDF` 提取带 `===== [page N] =====` 的 `paper.txt` 并渲染整页 PNG，同时把回退原因写入 `prep_status.txt`。
+2. **离线或未公开稿件**：`mineru-open-api` 会将 PDF 上传至云端解析；处理审稿件、未公开草稿或无网环境时，显式加 `--backend pymupdf` 走纯本地提取。
+3. **补充整页渲染**：MinerU 模式下若发现极少数纯矢量图漏裁、裁切不全，或需核对密集表格原貌，可运行 `uv run scripts/prepare_local_pdf.py <pdf> <out-dir>/ --render-pages` 额外产出 `page-NNN.png`。
+4. 没有 `uv` 且无法使用 MinerU 时，可用 `python3 scripts/prepare_local_pdf.py <pdf> <out-dir>/ --backend pymupdf` 触发 `poppler` 兜底（能力较弱且无页码标记）。
 
-**不要**手动 `pip install` 或 `apt install` PDF 工具来绕开脚本：依赖声明集中在脚本头部，绕开会让环境不可复现。
+注意：
+- **不要**改用免认证的 `mineru-open-api flash-extract` 替代 `extract`：`flash-extract` 会将公式、表格、图片替换为占位符，丢失论文核心证据。
+- **不要**手动 `pip install` 或 `apt install` PDF 工具来绕开脚本：本地依赖声明集中在脚本头部，绕开会让环境不可复现。
 
-`paper.txt` 中每页前会有 `===== [page N] =====` 标记，写正文时**直接用它给关键数字标页码**，不要再去数页。
+写正文时**直接用 `paper.md` 中的 `<!-- ===== [page N] ===== -->`（或 `paper.txt` 中的 `===== [page N] =====`）给关键判断与数字标物理页码**，不要靠估算数页；若需精确核对跨页段落归属，也可查阅 `paper.json` 中对应块的 `page_idx`（从 0 起算，物理页码为 `page_idx + 1`）。
 
 如果提取失败：
 
-- 明确记录当前有哪些材料可用
+- 明确记录当前有哪些材料可用（见 `prep_status.txt`）
 - 继续寻找同篇论文的已提取文本、副本、笔记
 - 不要因为缺少一个工具就直接只看标题和摘要
 
@@ -61,16 +71,16 @@ paper-workdir/
 - 关键公式
 - 关键数字所在页
 
-### 3. 提取图片或页面
+### 2. 检查图片与表格资源
 
-这一步由 `prepare_local_pdf.py` 自动完成，产出两类文件：
+根据实际后端检查 `images/index.md`：
 
-1. **`page-NNN.png` —— 整页渲染，200dpi，这是主要材料。** 论文的图表绝大多数是矢量绘制的，整页渲染是唯一稳定可得的视觉材料。要用某张图时，从对应页面渲染里裁出图区。
-2. **`img-NNN.png` —— 嵌入位图，只是补充。** 一篇典型的 CS 论文里，PDF 报告的"嵌入图像"往往只是矢量图背后的 soft mask 和阴影层，不是图本身；脚本会把它们与各自的 mask 合成回去，并丢弃合成后仍然是纯色的（那些就是空遮罩）。所以这里可能一张有用的都没有，属正常。
-
-需要更高清晰度时加 `--dpi 300`；页数多、只是通读版式时可以 `--dpi 120` 省空间。
-
-小于 120px 的嵌入图会被过滤（分割线、logo、字形碎片）。如果发现某张真图被漏掉了，调 `MIN_IMAGE_PIXELS`，不要改成按文件大小过滤：线条图和图表压缩后可能只有一两 KB。
+1. **MinerU 模式（默认）**：
+   - `images/` 中直接包含自动裁切好的插图（`image`）、统计图（`chart`）和表格切图（`table`）。其中插图与统计图已自动内联在 `paper.md` 中；表格在 `paper.md` 正文里以结构化 `<table>` 呈现，同时 `images/` 中也保留了对应的原表切图（在 `images/index.md` 中标为 `table crop`），正文中既可整理成 Markdown 表格，也可直接引用原表切图。
+   - `images/index.md` 末尾的 `Auxiliary / Formula Crops` 是 MinerU 识别块级公式时附带切出的公式小图，正文优先用 `$...$` / `$$...$$` 公式排版，仅在怀疑公式识别有误时用它核对原貌。
+2. **PyMuPDF 回退模式**：
+   - `page-NNN.png`（200dpi 整页渲染）是主要视觉材料；要用某张矢量图或表格时，从对应页面渲染里裁出图区。需要更高清晰度时加 `--dpi 300`。
+   - `img-NNN.png`（嵌入位图，已过滤小于 120px 的装饰碎片与空遮罩）仅作补充。
 
 目标不是“抽尽一切资源”，而是保证这些视觉证据可被正文使用：
 
@@ -79,35 +89,11 @@ paper-workdir/
 - 消融图
 - 案例图或可视化图
 
-如果论文没有合适的嵌入图：
+### 3. 维护图片索引
 
-- 渲染关键页面
-- 截图关键表格
-- 在索引里注明“页面截图替代原图”
+脚本已在 `images/index.md` 写好文件名、来源页码及（MinerU 模式下的）类型与原始图注；按需为实际采用的图片补充说明即可，无需逐张规划用途。
 
-### 4. 生成图片索引
-
-脚本已经写好了文件名、来源页和尺寸；按需为实际采用的图片补充图号（Fig./Table）与含义，无需逐张规划用途。
-
-脚本生成的初始状态：
-
-```markdown
-# Image Index
-
-- `img-004.png`: page 5, 1200x800px
-```
-
-需要时可补充为：
-
-```markdown
-# Image Index
-
-- `img-004.png`: page 5, 1200x800px — Fig. 2 方法框架图，用于“方法框架”一节
-- `img-007.png`: page 8, 900x600px — Fig. 5 主结果图，用于“主实验结果”
-- `img-009.png`: page 9, 400x300px — Fig. 7 案例图，不使用（与核心 claim 无关）
-```
-
-如果表格没有单独被提取成图片，在正文相关段落注明表号与关键数字即可。
+如果表格没有单独使用图片，在正文相关段落注明表号、页码与关键数字即可。
 
 ## Figure Usage Rules
 
@@ -135,8 +121,8 @@ paper-workdir/
 
 ## Failure Handling
 
+- MinerU 未认证或超时：脚本自动回退 PyMuPDF，查看 `prep_status.txt` 确认当前后端
 - 没有文本提取工具：改用已有文本或截图，不中断分析
 - 没有图片提取工具：改用关键页面截图，不省略图文结构
 - 图号不清晰：在正文里注明“依据页面内容判断”
-- 表格 OCR 差：给出能确认的数字和趋势，并注明不确定性
-- 没有表格图片：在正文相关段落摘录关键数字
+- 表格或公式识别存疑：对照 `images/` 中的切图或加 `--render-pages` 对照原页确认数字与符号，不猜测
