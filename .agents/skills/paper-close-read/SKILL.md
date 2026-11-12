@@ -21,7 +21,7 @@ description: 单篇论文的叙事式精读。支持 arXiv、本地 PDF 和已�
 - `analysis.md`：按 [output-template.md](references/output-template.md) 撰写的完整图文精读笔记，
   默认使用用户当前语言，不明确时用中文。
 
-按材料来源保留 `paper.txt`、`images/` 和图片索引等辅助材料。
+按材料来源保留 `paper.md` / `paper.json`（或回退时的 `paper.txt`）、`images/` 和图片索引等辅助材料。
 不要求另建独立的证据地图或写作前置文件；claim 与证据的映射写入 `analysis.md` 的核心证据表，
 关键证据也在相关正文中解释。
 
@@ -39,7 +39,9 @@ description: 单篇论文的叙事式精读。支持 arXiv、本地 PDF 和已�
   需安装 uv，首次运行可能下载依赖。
 - **本地 PDF**：先读 [local-paper-workflow.md](references/local-paper-workflow.md)，
   运行 `uv run scripts/prepare_local_pdf.py <paper.pdf> <output-dir>/`。
-  脚本声明 PyMuPDF 依赖，复制原文、提取带页码的文本并渲染页面。
+  脚本默认优先调用已配置 Token 的 `mineru-open-api extract`（开启 `--ocr`，产出带物理页码标记的
+  `paper.md`、`paper.json` 与自动裁切图表）；未安装、未认证、请求失败或指定 `--backend pymupdf` 时，
+  自动回退到 PyMuPDF 提取 `paper.txt` 并渲染整页图像。
 - **已有文本 / Markdown / 截图等**：直接整理原文和附带图片，不重复提取。
 
 阅读全文中与核心论证有关的部分，包括必要的附录。材料缺图、缺表、缺附录或提取不可靠时，
@@ -99,7 +101,7 @@ description: 单篇论文的叙事式精读。支持 arXiv、本地 PDF 和已�
 - 深度放在决定论文价值的细节上；不要求每个模块、实验或附录平均展开。
 - 至少插入一张方法相关图和一张结果相关图或表，放在相关段落旁并解释读法及其意义。
   无法做到时说明原因，并按模板展开可用证据；存在未使用的关键图表时补充图表取舍说明。
-- 图片使用真实文件名和相对路径。PDF 页码以提取文本的页码标记为准；
+- 图片使用真实文件名和相对路径。PDF 页码以提取材料（`paper.md` 或 `paper.txt`）中的页码标记为准；
   arXiv Markdown 用章节锚点、图号、表号或公式编号定位，不编造页码。
 - 关键判断与数字在相关段落就近注明来源；区分作者声称、原文支持的结果与自己的解释。
   保留不确定性，图文提取缺失时不要猜测。
