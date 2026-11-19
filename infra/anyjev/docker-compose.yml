@@ -1,0 +1,97 @@
+name: anyjev
+
+# Local image: vLLM 0.21.0, transformers 5.8.1 (checked 2026-11-19).
+# AnyJev: https://github.com/nokia-applied-research/AnyJev
+# Source checkout at setup: 35311c58955716cb8955ce1368a665988bc63735.
+# Start: docker compose -f infra/anyjev/docker-compose.yml up -d
+# Logs:  docker compose -f infra/anyjev/docker-compose.yml logs -f
+x-runtime: &runtime
+  image: vllm/vllm-openai@sha256:a230095847e93bd4df9888b33dab956fa9504537b828a23657d2b26fed57b5c9
+  pull_policy: never
+  restart: unless-stopped
+  environment:
+    HF_HUB_OFFLINE: "1"
+    TRANSFORMERS_OFFLINE: "1"
+    PYTHONUNBUFFERED: "1"
+
+services:
+  vllm:
+    <<: *runtime
+    shm_size: "8gb"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${ANYJEV_GPU_ID:-0}"]
+              capabilities: [gpu]
+    volumes:
+      - type: bind
+        source: ${ANYJEV_MODEL_DIR:-/srv/models/decision}
+        target: /model
+        read_only: true
+        bind:
+          create_host_path: false
+    ports:
+      - "127.0.0.1:${ANYJEV_VLLM_PORT:-8000}:8000"
+    command:
+      - /model
+      - --served-model-name
+      - tacit-9b
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --dtype
+      - bfloat16
+      - --max-model-len
+      - "${ANYJEV_MAX_MODEL_LEN:-32768}"
+      - --gpu-memory-utilization
+      - "${ANYJEV_GPU_MEMORY_UTILIZATION:-0.5}"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()"]
+      interval: 10s
+      timeout: 10s
+      start_period: 10m
+      retries: 6
+
+  gateway:
+    <<: *runtime
+    depends_on:
+      vllm:
+        condition: service_healthy
+    working_dir: /app
+    entrypoint: ["python3", "-m", "anyjev.serve"]
+    volumes:
+      - type: bind
+        source: ${ANYJEV_MODEL_DIR:-/srv/models/decision}
+        target: /model
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ../../references/repos/AnyJev
+        target: /app
+        read_only: true
+        bind:
+          create_host_path: false
+    ports:
+      - "127.0.0.1:${ANYJEV_PORT:-8100}:8100"
+    command:
+      - --model
+      - /model
+      - --served-model
+      - tacit-9b
+      - --upstream
+      - http://vllm:8000/v1
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8100"
+      # Add --adaptive to let low-confidence decisions use reasoning.
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health', timeout=5).read()"]
+      interval: 10s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
