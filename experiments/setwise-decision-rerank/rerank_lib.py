@@ -1,12 +1,13 @@
 """
 Setwise & Pointwise Re-ranking primitives and evaluation utilities for Decision Models
-(Local AnyJev Tacit-9B & Google Gemini Decision 1 API) on the CLERC legal dataset.
+(Local AnyJev Tacit-9B, Local Kev-9B, & Google Gemini Decision 1 API) on the CLERC legal dataset.
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import os
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -83,11 +84,14 @@ def load_clerc_slice() -> tuple[dict[str, str], dict[str, str], dict[str, str], 
 
 
 class DiskCache:
-    """Deterministic JSON disk cache for decision model API calls."""
+    """Thread-safe deterministic JSON disk cache for decision model API calls."""
 
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, flush_every: int = 1):
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.Lock()
+        self._flush_every = max(1, flush_every)
+        self._dirty_count = 0
         self._data: dict[str, Any] = {}
         if self.path.exists():
             try:
@@ -101,16 +105,26 @@ class DiskCache:
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
     def get(self, key: str) -> Any | None:
-        return self._data.get(key)
+        with self._lock:
+            return self._data.get(key)
 
     def set(self, key: str, value: Any) -> None:
-        self._data[key] = value
-        self.save()
+        with self._lock:
+            self._data[key] = value
+            self._dirty_count += 1
+            if self._dirty_count >= self._flush_every:
+                self._save_locked()
+                self._dirty_count = 0
 
-    def save(self) -> None:
+    def _save_locked(self) -> None:
         tmp = self.path.with_suffix(".tmp")
         tmp.write_text(json.dumps(self._data, ensure_ascii=False, indent=2), encoding="utf-8")
         tmp.replace(self.path)
+
+    def save(self) -> None:
+        with self._lock:
+            self._save_locked()
+            self._dirty_count = 0
 
 
 # ---------------------------------------------------------------------------
@@ -123,10 +137,22 @@ class AnyJevBackend:
     Uses direct connection (`ProxyHandler({})`) so localhost never goes through HTTP proxy.
     """
 
-    def __init__(self, endpoint: str | None = None, cache: DiskCache | None = None):
+    def __init__(
+        self,
+        endpoint: str | None = None,
+        cache: DiskCache | None = None,
+        noul_instructions: str = NOUL_INSTRUCTIONS,
+        noul_true_desc: str = NOUL_TRUE_DESC,
+        noul_false_desc: str = NOUL_FALSE_DESC,
+        choice_instructions: str = CHOICE_INSTRUCTIONS,
+    ):
         self.endpoint = endpoint or os.environ.get("ANYJEV_ENDPOINT", "http://127.0.0.1:8100/v1/decide")
         self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         self.cache = cache
+        self.noul_instructions = noul_instructions
+        self.noul_true_desc = noul_true_desc
+        self.noul_false_desc = noul_false_desc
+        self.choice_instructions = choice_instructions
         self.reset_stats()
 
     def reset_stats(self) -> None:
@@ -165,11 +191,11 @@ class AnyJevBackend:
         return body
 
     def score_pointwise_batch(self, query: str, cids: list[str], corpus: dict[str, str]) -> dict[str, float]:
-        """Batch all 30 pointwise `yes_no` decisions into 1 gateway request."""
+        """Batch all pointwise `yes_no` decisions into 1 gateway request."""
         question = (
-            f"{NOUL_INSTRUCTIONS}\n"
-            f"- Yes: {NOUL_TRUE_DESC}\n"
-            f"- No: {NOUL_FALSE_DESC}"
+            f"{self.noul_instructions}\n"
+            f"- Yes: {self.noul_true_desc}\n"
+            f"- No: {self.noul_false_desc}"
         )
         items = [
             {
@@ -193,7 +219,7 @@ class AnyJevBackend:
             state = f"Query Excerpt:\n{query}\n\nCandidate Passages:\n{tagged_block}"
             item = {
                 "state": state,
-                "question": CHOICE_INSTRUCTIONS,
+                "question": self.choice_instructions,
                 "options": tags,
                 "kind": "choice",
             }
@@ -203,7 +229,7 @@ class AnyJevBackend:
             state = f"Query Excerpt:\n{query}"
             item = {
                 "state": state,
-                "question": CHOICE_INSTRUCTIONS,
+                "question": self.choice_instructions,
                 "options": options,
                 "kind": "choice",
             }
@@ -235,6 +261,213 @@ class AnyJevBackend:
         return out
 
 
+class KevBackend:
+    """
+    Local Kev-9B Server (`POST http://127.0.0.1:8009/v1/systemone`, TypeSafe System One API compatible).
+    Uses direct connection (`ProxyHandler({})`) so localhost never goes through HTTP proxy.
+    """
+
+    def __init__(
+        self,
+        endpoint: str | None = None,
+        model: str | None = None,
+        cache: DiskCache | None = None,
+        noul_instructions: str = NOUL_INSTRUCTIONS,
+        noul_true_desc: str = NOUL_TRUE_DESC,
+        noul_false_desc: str = NOUL_FALSE_DESC,
+        choice_instructions: str = CHOICE_INSTRUCTIONS,
+    ):
+        self.endpoint = endpoint or os.environ.get("KEV_ENDPOINT", "http://127.0.0.1:8009/v1/systemone")
+        self.model = model or os.environ.get("KEV_MODEL", "kev-latest")
+        self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        self.cache = cache
+        self.noul_instructions = noul_instructions
+        self.noul_true_desc = noul_true_desc
+        self.noul_false_desc = noul_false_desc
+        self.choice_instructions = choice_instructions
+        self.reset_stats()
+
+    def reset_stats(self) -> None:
+        self.calls = 0
+        self.decisions = 0
+        self.total_tokens = 0
+        self.total_latency_s = 0.0
+        self.cache_hits = 0
+
+    def _post(self, payload: dict[str, Any], n_decisions: int = 1) -> dict[str, Any]:
+        if self.cache is not None:
+            ck = self.cache.make_key(f"kev:{self.model}:{self.endpoint}", payload)
+            cached = self.cache.get(ck)
+            if cached is not None:
+                body = cached["body"]
+                self.calls += 1
+                self.decisions += n_decisions
+                self.cache_hits += 1
+                self.total_tokens += int((body.get("usage") or {}).get("input_tokens", 0))
+                self.total_latency_s += float(cached.get("_latency_s", 0.0))
+                return body
+
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            self.endpoint,
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        t0 = time.perf_counter()
+        with self._opener.open(req, timeout=180.0) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+        lat = time.perf_counter() - t0
+        self.total_latency_s += lat
+        self.calls += 1
+        self.decisions += n_decisions
+        self.total_tokens += int((body.get("usage") or {}).get("input_tokens", 0))
+        if self.cache is not None:
+            self.cache.set(ck, {"body": body, "_latency_s": lat})
+        return body
+
+    def score_pointwise_batch(
+        self, query: str, cids: list[str], corpus: dict[str, str], max_workers: int = 16
+    ) -> dict[str, float]:
+        """
+        Cookbook baseline (`rerank_typesafe`): 1 Noul request per (query, candidate) pair in `state`.
+        Kev's server thread automatically coalesces concurrent requests into batched CUDA graph passes.
+        """
+        question = {
+            "type": "noul",
+            "instructions": self.noul_instructions,
+            "criteria": {
+                "true": self.noul_true_desc,
+                "false": self.noul_false_desc,
+            },
+        }
+
+        def _one(cid: str) -> tuple[str, float, int]:
+            payload = {
+                "state": {"query_excerpt": query, "candidate_passage": corpus[cid]},
+                "model": self.model,
+                "questions": {"is_cited_source": question},
+            }
+            if self.cache is not None:
+                ck = self.cache.make_key(f"kev:{self.model}:{self.endpoint}", payload)
+                cached = self.cache.get(ck)
+                if cached is not None:
+                    body = cached["body"]
+                    toks = int((body.get("usage") or {}).get("input_tokens", 0))
+                    return cid, float(body["answers"]["is_cited_source"]["noul"]), toks
+
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                self.endpoint,
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            t0 = time.perf_counter()
+            with self._opener.open(req, timeout=180.0) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+            lat = time.perf_counter() - t0
+            if self.cache is not None:
+                self.cache.set(ck, {"body": body, "_latency_s": lat})
+            toks = int((body.get("usage") or {}).get("input_tokens", 0))
+            return cid, float(body["answers"]["is_cited_source"]["noul"]), toks
+
+        t_wall = time.perf_counter()
+        # Check if all are cached to avoid zero wall-clock on cache hit
+        all_cached = False
+        cached_lat = 0.0
+        if self.cache is not None:
+            cks = [
+                self.cache.make_key(
+                    f"kev:{self.model}:{self.endpoint}",
+                    {
+                        "state": {"query_excerpt": query, "candidate_passage": corpus[c]},
+                        "model": self.model,
+                        "questions": {"is_cited_source": question},
+                    },
+                )
+                for c in cids
+            ]
+            entries = [self.cache.get(k) for k in cks]
+            if all(e is not None for e in entries):
+                all_cached = True
+                # Approximate batched wall-clock latency from max or sum/batch
+                cached_lat = max(float(e.get("_latency_s", 0.0)) for e in entries if e)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            triples = list(pool.map(_one, cids))
+        wall_lat = cached_lat if all_cached else (time.perf_counter() - t_wall)
+
+        self.calls += len(cids)
+        self.decisions += len(cids)
+        self.total_tokens += sum(t for _, _, t in triples)
+        self.total_latency_s += wall_lat
+        if all_cached:
+            self.cache_hits += len(cids)
+        return {cid: score for cid, score, _ in triples}
+
+    def score_pointwise_fanout_one_call(
+        self, query: str, cids: list[str], corpus: dict[str, str]
+    ) -> dict[str, float]:
+        """
+        Speculative fan-out: 1 API call with 30 Noul questions sharing `state` (prefix-cached in Kev),
+        each embedding one candidate passage in its question branch.
+        """
+        questions = {
+            c: {
+                "type": "noul",
+                "instructions": f"{self.noul_instructions}\n\nCandidate passage:\n{corpus[c]}",
+                "criteria": {
+                    "true": self.noul_true_desc,
+                    "false": self.noul_false_desc,
+                },
+            }
+            for c in cids
+        }
+        body = self._post(
+            {
+                "state": f"Query Excerpt:\n{query}",
+                "model": self.model,
+                "questions": questions,
+            },
+            n_decisions=len(cids),
+        )
+        return {c: float(body["answers"][c]["noul"]) for c in cids}
+
+    def choice_setwise(
+        self, query: str, cids: list[str], corpus: dict[str, str], mode: str = "tagged"
+    ) -> dict[str, float]:
+        """
+        Evaluate a subset of candidates (2..255) with one Choice question on Kev's pointer head.
+        mode="tagged": passages are placed in `state` with `[cid]` tags; `criteria` maps `cid -> Passage [cid]`.
+        mode="criteria": passage text is placed directly in `criteria[cid]`.
+        """
+        if mode == "tagged":
+            tagged_block = "\n\n".join(f"[{c}] {corpus[c]}" for c in cids)
+            state: Any = f"Query Excerpt:\n{query}\n\nCandidate Passages:\n{tagged_block}"
+            criteria = {c: f"Passage [{c}]" for c in cids}
+        else:
+            state = f"Query Excerpt:\n{query}"
+            criteria = {c: corpus[c] for c in cids}
+
+        body = self._post(
+            {
+                "state": state,
+                "model": self.model,
+                "questions": {
+                    "best_passage": {
+                        "type": "choice",
+                        "instructions": self.choice_instructions,
+                        "criteria": criteria,
+                    }
+                },
+            },
+            n_decisions=1,
+        )
+        probs = body["answers"]["best_passage"]["probabilities"]
+        return {c: float(probs.get(c, 0.0)) for c in cids}
+
+
 class GeminiDecisionBackend:
     """
     Google Gemini Decision 1 API (`POST https://generativelanguage.googleapis.com/v1beta/decisions`).
@@ -248,6 +481,10 @@ class GeminiDecisionBackend:
         model: str | None = None,
         proxy_url: str | None = None,
         cache: DiskCache | None = None,
+        noul_instructions: str = NOUL_INSTRUCTIONS,
+        noul_true_desc: str = NOUL_TRUE_DESC,
+        noul_false_desc: str = NOUL_FALSE_DESC,
+        choice_instructions: str = CHOICE_INSTRUCTIONS,
     ):
         self.api_key = (
             api_key
@@ -265,6 +502,10 @@ class GeminiDecisionBackend:
             urllib.request.ProxyHandler({"http": self.proxy_url, "https": self.proxy_url})
         )
         self.cache = cache
+        self.noul_instructions = noul_instructions
+        self.noul_true_desc = noul_true_desc
+        self.noul_false_desc = noul_false_desc
+        self.choice_instructions = choice_instructions
         self.reset_stats()
 
     def reset_stats(self) -> None:
@@ -274,7 +515,7 @@ class GeminiDecisionBackend:
         self.total_latency_s = 0.0
         self.cache_hits = 0
 
-    def _post(self, payload: dict[str, Any], n_decisions: int = 1, retries: int = 5) -> dict[str, Any]:
+    def _post(self, payload: dict[str, Any], n_decisions: int = 1, retries: int = 12) -> dict[str, Any]:
         if self.cache is not None:
             ck = self.cache.make_key(f"gemini:{self.model}", payload)
             cached = self.cache.get(ck)
@@ -310,7 +551,7 @@ class GeminiDecisionBackend:
                 return body
             except Exception as e:
                 last_err = e
-                time.sleep(0.8 * (attempt + 1))
+                time.sleep(min(15.0, 1.5 * (attempt + 1)))
         raise RuntimeError(f"Gemini Decisions API failed after {retries} attempts: {last_err}")
 
     def score_pointwise_batch(
@@ -319,10 +560,10 @@ class GeminiDecisionBackend:
         """Cookbook baseline: 1 Noul API request per (query, candidate) pair."""
         question = {
             "type": "noul",
-            "instructions": NOUL_INSTRUCTIONS,
+            "instructions": self.noul_instructions,
             "criteria": {
-                "true_description": NOUL_TRUE_DESC,
-                "false_description": NOUL_FALSE_DESC,
+                "true_description": self.noul_true_desc,
+                "false_description": self.noul_false_desc,
             },
         }
 
@@ -346,16 +587,16 @@ class GeminiDecisionBackend:
         self, query: str, cids: list[str], corpus: dict[str, str]
     ) -> dict[str, float]:
         """
-        Speculative fan-out: 1 API call with 30 Noul questions,
+        Speculative fan-out: 1 API call with Noul questions,
         each embedding one candidate passage in its instructions.
         """
         questions = {
             c: {
                 "type": "noul",
-                "instructions": f"{NOUL_INSTRUCTIONS}\n\nCandidate passage:\n{corpus[c]}",
+                "instructions": f"{self.noul_instructions}\n\nCandidate passage:\n{corpus[c]}",
                 "criteria": {
-                    "true_description": NOUL_TRUE_DESC,
-                    "false_description": NOUL_FALSE_DESC,
+                    "true_description": self.noul_true_desc,
+                    "false_description": self.noul_false_desc,
                 },
             }
             for c in cids
@@ -393,7 +634,7 @@ class GeminiDecisionBackend:
                 "questions": {
                     "best_passage": {
                         "type": "choice",
-                        "instructions": CHOICE_INSTRUCTIONS,
+                        "instructions": self.choice_instructions,
                         "criteria": criteria,
                     }
                 },

@@ -1,0 +1,77 @@
+name: kev
+
+# Local Kev-9B Decision Model server (TypeSafe System One API compatible).
+# Uses local checkpoint /srv/models/jaredpalmer/kev-9b on base /srv/models/Qwen/Qwen3.5-9B-Base.
+# Start: docker compose -f infra/kev/docker-compose.yml up -d
+# Logs:  docker compose -f infra/kev/docker-compose.yml logs -f
+services:
+  kev:
+    image: mineru-lmt:v4
+    pull_policy: never
+    restart: unless-stopped
+    shm_size: "8gb"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${KEV_GPU_ID:-1}"]
+              capabilities: [gpu]
+    environment:
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/opt/peft:/app"
+      KEV_RUN_DIR: "/srv/models/jaredpalmer/kev-9b"
+      KEV_BASE_DIR: "/srv/models/Qwen/Qwen3.5-9B-Base"
+      KEV_PORT: "8009"
+    volumes:
+      - type: bind
+        source: /srv/models
+        target: /srv/models
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ../../references/repos/kev
+        target: /app
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /var/cache/uv/archive-v0/eqEU08pTdo-mMOW4
+        target: /opt/peft
+        read_only: true
+        bind:
+          create_host_path: false
+    ports:
+      - "127.0.0.1:${KEV_PORT:-8009}:8009"
+    working_dir: /app
+    entrypoint:
+      - python3
+      - -c
+      - |
+        import os, torch, uvicorn
+        from kev.checkpoint import Checkpoint, LoadOptions
+        from kev.serve import Server, app
+
+        run_dir = os.environ.get("KEV_RUN_DIR", "/srv/models/jaredpalmer/kev-9b")
+        base_dir = os.environ.get("KEV_BASE_DIR", "/srv/models/Qwen/Qwen3.5-9B-Base")
+        port = int(os.environ.get("KEV_PORT", "8009"))
+
+        ck = Checkpoint(run_dir)
+        if os.path.isdir(base_dir):
+            ck.meta.base = base_dir
+            ck.meta.base_revision = None
+
+        opts = LoadOptions(dtype=torch.bfloat16, cuda_graphs=True, fused=False)
+        tok, model = ck.load("cuda", opts)
+        app.state.server = Server(ck, tok, model, "cuda")
+        print(f"Serving Kev-9B ({run_dir}) on cuda (bf16, temperature={model.head.temperature:.2f}) at 0.0.0.0:{port}")
+        uvicorn.run(app, host="0.0.0.0", port=port)
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8009/v1/models', timeout=5).read()"]
+      interval: 10s
+      timeout: 10s
+      start_period: 2m
+      retries: 6

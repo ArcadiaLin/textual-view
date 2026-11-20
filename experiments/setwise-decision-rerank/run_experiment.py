@@ -15,6 +15,7 @@ from rerank_lib import (
     AnyJevBackend,
     DiskCache,
     GeminiDecisionBackend,
+    KevBackend,
     evaluate_rankings,
     load_clerc_slice,
     load_env,
@@ -31,8 +32,8 @@ from rerank_lib import (
 def main() -> None:
     load_env()
     parser = argparse.ArgumentParser(description="Run Setwise Decision Model Re-ranking experiments")
-    parser.add_argument("--backend", choices=["anyjev", "gemini", "both"], default="both")
-    parser.add_argument("--num-queries", type=int, default=15, help="Number of CLERC queries to evaluate (1..40)")
+    parser.add_argument("--backend", choices=["anyjev", "kev", "gemini", "all"], default="all")
+    parser.add_argument("--num-queries", type=int, default=10, help="Number of CLERC queries to evaluate (1..40)")
     args = parser.parse_args()
 
     corpus, queries, golds, candidates = load_clerc_slice()
@@ -59,7 +60,7 @@ def main() -> None:
         }
     ]
 
-    if args.backend in ("anyjev", "both"):
+    if args.backend in ("anyjev", "all"):
         print("\n--- Local AnyJev (Tacit-9B @ 127.0.0.1:8100, Direct No-Proxy) ---")
         aj = AnyJevBackend(cache=cache)
         methods_aj = [
@@ -106,7 +107,62 @@ def main() -> None:
                 f"Calls/q: {rec['calls_per_query']:4.1f} | Lat/q: {rec['latency_s_per_query']:.2f}s"
             )
 
-    if args.backend in ("gemini", "both"):
+    if args.backend in ("kev", "all"):
+        print("\n--- Local Kev-9B (Qwen3.5-9B Pointer Head @ 127.0.0.1:8009, Direct No-Proxy) ---")
+        kv = KevBackend(cache=cache)
+        methods_kv = [
+            (
+                "Pointwise Noul (30 state-pairs, cookbook)",
+                lambda q: rerank_pointwise(kv, queries[q], candidates[q], corpus),
+            ),
+            (
+                "Pointwise Noul Fan-out (1 call x 30 Nouls)",
+                lambda q: rerank_pointwise_fanout(kv, queries[q], candidates[q], corpus),
+            ),
+            (
+                "One-shot Setwise Choice-30 (1 call, tagged)",
+                lambda q: rerank_oneshot_choice(kv, queries[q], candidates[q], corpus, mode="tagged"),
+            ),
+            (
+                "Setwise Tournament (6x5 -> 12, tagged, 7 calls)",
+                lambda q: rerank_setwise_tournament(kv, queries[q], candidates[q], corpus, 5, 2, "tagged"),
+            ),
+            (
+                "Setwise Tournament (6x5 -> 12, criteria, 7 calls)",
+                lambda q: rerank_setwise_tournament(kv, queries[q], candidates[q], corpus, 5, 2, "criteria"),
+            ),
+            (
+                "Setwise Sliding Window (w=6, s=4, tagged)",
+                lambda q: rerank_setwise_sliding_window(kv, queries[q], candidates[q], corpus, 6, 4, 1, "tagged"),
+            ),
+            (
+                "Coarse-to-Fine (Pointwise Noul -> Choice-5, criteria)",
+                lambda q: rerank_coarse_to_fine(kv, queries[q], candidates[q], corpus, 5, "criteria", use_fanout=False),
+            ),
+        ]
+        for name, fn in methods_kv:
+            kv.reset_stats()
+            ranked = {q: fn(q) for q in qids}
+            m = evaluate_rankings(ranked, golds, qids)
+            nq = len(qids)
+            rec = {
+                "backend": "Kev-9B (Local)",
+                "method": name,
+                **{k: m[k] for k in ("top1", "top5", "top10", "ndcg10", "mrr", "mean_rank")},
+                "calls_per_query": kv.calls / nq,
+                "decisions_per_query": kv.decisions / nq,
+                "tokens_per_query": kv.total_tokens / nq,
+                "latency_s_per_query": kv.total_latency_s / nq,
+            }
+            summary_records.append(rec)
+            print(
+                f"  [{name:<52}] Top-1: {m['top1']:5.1%} | Top-5: {m['top5']:5.1%} | "
+                f"Top-10: {m['top10']:5.1%} | NDCG@10: {m['ndcg10']:.3f} | MRR: {m['mrr']:.3f} | "
+                f"Calls/q: {rec['calls_per_query']:4.1f} | Tok/q: {rec['tokens_per_query']:6.0f} | "
+                f"Lat/q: {rec['latency_s_per_query']:.2f}s"
+            )
+
+    if args.backend in ("gemini", "all"):
         print("\n--- Google Gemini Decision 1 (gemini-decision-1 via proxy 127.0.0.1:10809) ---")
         gm = GeminiDecisionBackend(cache=cache)
         methods_gm = [
