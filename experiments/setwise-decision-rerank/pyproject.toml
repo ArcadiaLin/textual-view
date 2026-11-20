@@ -1,0 +1,17 @@
+[project]
+name = "setwise-decision-rerank"
+version = "0.1.0"
+description = "Setwise re-ranking exploration on Decision Models (Local AnyJev Tacit-9B & Google Gemini Decision 1)"
+requires-python = ">=3.11"
+dependencies = [
+    "bm25s>=0.3.16",
+    "ipykernel>=7.0.0",
+    "matplotlib>=3.10.0",
+    "nbclient>=0.11.0",
+    "nbformat>=5.11.0",
+    "numpy>=2.0.0",
+]
+
+[tool.uv]
+package = false
+environments = ["sys_platform == 'linux'"]
