@@ -5,3 +5,81 @@
 % - 与 papers/<citekey>.pdf、papers/<citekey>/ 和 docs/literature/<citekey>.md 对应。
 % - 每个条目的 note 写明它支撑本项目的哪个问题、决策或实验。
 % - 新项目从空文献库开始；仅在确认用途后添加条目。
+
+@article{2026-SemStats,
+  title = {Bridging the Gap: Cardinality Estimation for Semantic Queries on Unstructured Data},
+  author = {Xu, Shihui and Wang, Jiayi and Li, Guoliang},
+  journal = {Proceedings of the ACM on Management of Data},
+  year = {2026},
+  volume = {4},
+  number = {3},
+  articleno = {147},
+  numpages = {26},
+  doi = {10.1145/3802024},
+  url = {https://doi.org/10.1145/3802024},
+  note = {支撑 docs/designs/2026-11-23-decision-model-semantic-join-probabilistic-optimization.md 的语义目录、索引和分层基数估计对照；原文阅读版本见该文档的材料范围。}
+}
+
+@misc{2026-JEVDB,
+  title = {Prune First, Decide Fast: Scalable Semantic Query Processing with JEVDB},
+  author = {Wang, Zhengle and Yan, Hanxu and Zhao, Fuheng and Liu, Chunwei},
+  year = {2026},
+  eprint = {2610.02046},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.DB},
+  version = {1},
+  url = {https://arxiv.org/abs/2610.02046v1},
+  note = {支撑 docs/designs/2026-11-23-decision-model-semantic-join-probabilistic-optimization.md 的文档级概率索引、decision model 执行及语义候选筛选建模。}
+}
+
+@misc{2026-CostAccuracy,
+  title = {When Plans Change Answers: Formalizing Cost-Accuracy Optimization for Semantic Queries},
+  author = {Kim, Kyoungmin},
+  year = {2026},
+  eprint = {2610.08089},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.DB},
+  version = {2},
+  url = {https://arxiv.org/abs/2610.08089v2},
+  note = {支撑 docs/designs/2026-11-23-decision-model-semantic-join-probabilistic-optimization.md 的输出质量、校准变化和连接错误贡献传播建模。}
+}
+
+@article{2026-FDJ,
+  title = {Featurized-Decomposition Join: Low-Cost Semantic Joins with Guarantees},
+  author = {Zeighami, Sepanta and Shankar, Shreya and Parameswaran, Aditya},
+  journal = {Proceedings of the VLDB Endowment},
+  year = {2026},
+  volume = {19},
+  number = {11},
+  pages = {3048--3061},
+  doi = {10.14778/3836663.3836672},
+  url = {https://www.vldb.org/pvldb/vol19/p3048-zeighami.pdf},
+  eprint = {2512.05399},
+  archivePrefix = {arXiv},
+  note = {支撑 docs/designs/2026-11-23-decision-model-semantic-join-probabilistic-optimization.md 的自动语义特征、廉价候选筛选和统计质量保证对照；机制核对采用 arXiv v1。}
+}
+
+@misc{2026-JoinML,
+  title = {Accelerating Approximate Analytical Join Queries over Unstructured Data with Statistical Guarantees},
+  author = {Zhu, Yuxuan and Jin, Tengjun and Mo, Chenghao and Kang, Daniel},
+  year = {2026},
+  eprint = {2603.16153},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.DB},
+  version = {1},
+  doi = {10.1145/3802004},
+  url = {https://arxiv.org/abs/2603.16153v1},
+  note = {支撑 docs/designs/2026-11-23-decision-model-semantic-join-probabilistic-optimization.md 的预算化连接抽样、统计区间与连接顺序优化对照。}
+}
+
+@misc{2023-PPI,
+  title = {Prediction-Powered Inference},
+  author = {Angelopoulos, Anastasios N. and Bates, Stephen and Fannjiang, Clara and Jordan, Michael I. and Zrnic, Tijana},
+  year = {2023},
+  eprint = {2301.09633},
+  archivePrefix = {arXiv},
+  primaryClass = {stat.ML},
+  version = {4},
+  url = {https://arxiv.org/abs/2301.09633v4},
+  note = {支撑 docs/designs/2026-11-23-decision-model-semantic-join-probabilistic-optimization.md 的模型辅助推断及参考样本残差校正背景。}
+}

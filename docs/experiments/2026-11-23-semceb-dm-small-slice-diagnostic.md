@@ -1,6 +1,6 @@
 # SemCEB × Gemini Decision 1：小切片诊断实验推进流程
 
-日期：2026-11-23。状态：**待冻结的实验方案**。用户已授权搭建最小工程及记录推进流程；本文不表示已批准或执行下面约 130 次新增请求的诊断实验。首次联通验证已完成，详见第 2 节。
+日期：2026-11-23。状态：**已按本方案冻结并执行完成**，实验结果与诊断结论见 [2026-11-23-semceb-dm-small-slice-diagnostic-results.md](2026-11-23-semceb-dm-small-slice-diagnostic-results.md)。首次联通验证详见第 2 节。
 
 关联：[原型设计](../designs/2026-11-23-dm-primitives-semantic-join-prototype.md)、[最小工程与运行说明](../../experiments/semceb-dm/README.md)。
 
