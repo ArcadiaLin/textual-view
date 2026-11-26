@@ -1,8 +1,11 @@
 """Evaluate SemStats estimates_single.json against SemCEB sf1000 ground-truth cardinalities.
 
-Reports UNSIGNED q-error clamped at 1.0:
-    qerr(est, true) = max(max(1.0, est), max(1.0, true)) / min(max(1.0, est), max(1.0, true))
-Note: SemCEB's native reporting uses signed q-error (negative for underestimation).
+Reports both:
+1. UNSIGNED q-error clamped at 1.0 (SemStats / standard CE convention):
+       qerr(est, true) = max(max(1.0, est), max(1.0, true)) / min(max(1.0, est), max(1.0, true))
+2. SemCEB-native SIGNED q-error on rounded integer estimates
+   (matches references/repos/SemCEB/src/semceb/benchmark/benchmark.py:_calculate_q_error):
+       negative for underestimation, 1.0 for exact match, positive for overestimation.
 """
 import argparse
 import json
@@ -19,6 +22,19 @@ def qerr(est: float, true: float) -> float:
     return max(e, t) / min(e, t)
 
 
+def semceb_signed_qerr(est: float, true: float) -> tuple[int, float]:
+    """Exact match to SemCEB benchmark.py:_calculate_q_error on rounded int estimates."""
+    est_int = max(0, int(round(float(est))))
+    true_int = max(0, int(round(float(true))))
+    safe_est = max(1, est_int)
+    safe_true = max(1, true_int)
+    if est_int == true_int:
+        return est_int, 1.0
+    if est_int < true_int:
+        return est_int, -(safe_true / safe_est)
+    return est_int, safe_est / safe_true
+
+
 def summarize(vals: list[float]) -> dict:
     v = np.asarray(vals, dtype=float)
     q = np.quantile(v, QS)
@@ -31,6 +47,28 @@ def summarize(vals: list[float]) -> dict:
         "max": float(v.max()),
         "mean": float(v.mean()),
         "geo": float(np.exp(np.log(v).mean())),
+    }
+
+
+def summarize_semceb_signed(rows: list[dict]) -> dict:
+    sv = np.asarray([float(r["semceb_signed_qerr"]) for r in rows], dtype=float)
+    av = np.abs(sv)
+    q = np.quantile(av, QS)
+    return {
+        "n": int(len(sv)),
+        "signed_mean": float(sv.mean()),
+        "signed_min": float(sv.min()),
+        "signed_max": float(sv.max()),
+        "underestimate_count": int(sum(1 for r in rows if r["estimate_int"] < int(round(r["true"])))),
+        "exact_count": int(sum(1 for r in rows if r["estimate_int"] == int(round(r["true"])))),
+        "overestimate_count": int(sum(1 for r in rows if r["estimate_int"] > int(round(r["true"])))),
+        "abs_p50": float(q[0]),
+        "abs_p90": float(q[1]),
+        "abs_p95": float(q[2]),
+        "abs_p99": float(q[3]),
+        "abs_max": float(av.max()),
+        "abs_mean": float(av.mean()),
+        "abs_geo": float(np.exp(np.log(av).mean())),
     }
 
 
@@ -71,13 +109,16 @@ def main() -> None:
         true_card = float(q["ground_truth_cardinality"])
         est_card = float(r["estimate"])
         qe = qerr(est_card, true_card)
+        est_int, sq = semceb_signed_qerr(est_card, true_card)
         rows.append({
             "case_id": q["case_id"],
             "type": q["type"],
             "category": q["category"],
             "true": true_card,
             "estimate": est_card,
+            "estimate_int": est_int,
             "qerr": qe,
+            "semceb_signed_qerr": sq,
             "cand_size": r.get("cand_size"),
             "sample_size": r.get("sample_size"),
             "n_unique": r.get("n_unique"),
@@ -90,10 +131,13 @@ def main() -> None:
     all_qerr = [r["qerr"] for r in rows]
     nonzero_qerr = [r["qerr"] for r in rows if r["true"] > 0]
     samp_stats = summarize_sampling(rows)
+    signed_stats = summarize_semceb_signed(rows)
     summary = {
         "qerr_definition": "unsigned, clamped at 1.0: max(max(1, est), max(1, true)) / min(max(1, est), max(1, true))",
+        "semceb_signed_qerr_definition": "SemCEB native signed q-error on rounded int estimate (benchmark.py:_calculate_q_error); negative for underestimation",
         "all_queries": summarize(all_qerr),
         "nonzero_truth_only": summarize(nonzero_qerr) if nonzero_qerr else None,
+        "semceb_signed": signed_stats,
         "sampling": samp_stats,
         "zero_estimate_on_nonzero_truth": sum(1 for r in rows if r["true"] > 0 and r["estimate"] == 0.0),
         "fallback_count": sum(1 for r in rows if r["fallback"]),
@@ -102,7 +146,7 @@ def main() -> None:
     lines = [
         f"Estimates: {est_path}",
         f"Queries:   {q_path}",
-        "Metric:    UNSIGNED q-error (est & true clamped to >= 1.0; SemCEB native reports signed q-error)",
+        "Metrics:   (1) UNSIGNED q-error (float, clamped >= 1.0)  (2) SemCEB SIGNED q-error (rounded int, negative=under)",
         "",
         f"{'subset':<22s}{'n':>4s}{'p50':>8s}{'p90':>8s}{'p95':>8s}{'p99':>8s}{'max':>9s}{'mean':>8s}{'geo':>8s}",
         "-" * 79,
@@ -116,6 +160,13 @@ def main() -> None:
             )
     lines.append("")
     lines.append(
+        f"SemCEB signed q-error (int est): mean={signed_stats['signed_mean']:.3f} "
+        f"min={signed_stats['signed_min']:.3f} max={signed_stats['signed_max']:.3f} | "
+        f"under={signed_stats['underestimate_count']} exact={signed_stats['exact_count']} "
+        f"over={signed_stats['overestimate_count']} | "
+        f"|q| p50={signed_stats['abs_p50']:.3f} p90={signed_stats['abs_p90']:.3f} geo={signed_stats['abs_geo']:.3f}"
+    )
+    lines.append(
         f"sampling_draws: total={samp_stats['total_draws']} mean={samp_stats['mean_draws']:.1f} "
         f"median={samp_stats['median_draws']:.1f} max={samp_stats['max_draws']}"
     )
@@ -128,12 +179,13 @@ def main() -> None:
         f"fallback_count={summary['fallback_count']}"
     )
     lines.append("")
-    lines.append("Per-query breakdown (sorted by q-error descending):")
+    lines.append("Per-query breakdown (sorted by unsigned q-error descending):")
     for r in sorted(rows, key=lambda x: -x["qerr"]):
         lines.append(
-            f"  {r['case_id']}  q={r['qerr']:7.2f}  true={r['true']:6.0f}  est={r['estimate']:7.1f}  "
+            f"  {r['case_id']}  q={r['qerr']:7.2f}  sq={r['semceb_signed_qerr']:+8.2f}  "
+            f"true={r['true']:6.0f}  est={r['estimate']:7.1f}  "
             f"cand={r['cand_size']:5d}  draws={r['sample_size']:4d}  uniq={r['n_unique']:4d}  "
-            f"fb={int(bool(r['fallback']))}  {r['query'][:65]}"
+            f"fb={int(bool(r['fallback']))}  {r['query'][:55]}"
         )
 
     report_text = "\n".join(lines)
