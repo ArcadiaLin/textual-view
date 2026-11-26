@@ -2,10 +2,13 @@
 
 ## Project Context
 
-`textual-view` is a new research project. Its research questions, methods,
-evaluation tasks, and target venue remain open and will be established through
-discussion. Do not infer a technology stack or research conclusions from the
-project name.
+The project is named **semantic query optimization** and studies the optimization
+of semantic queries.
+This research direction is established. Specific research questions, methods,
+evaluation tasks, and the target venue are determined through discussion; consult
+the relevant documents for agreed decisions. The broad direction alone does not
+establish a particular method, system architecture, or experimental conclusion.
+Do not infer a technology stack or research conclusions from the project name.
 
 Do not carry over the source project's research direction, system design,
 experimental results, or historical decisions.
