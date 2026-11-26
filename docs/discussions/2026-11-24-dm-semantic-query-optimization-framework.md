@@ -12,9 +12,9 @@
 
 ### 与已有设计的关系
 
-[原型设计](../designs/2026-11-23-dm-primitives-semantic-join-prototype.md)仍以预算内基数估计为主路径。本讨论记录的是新的研究范围：基数估计成为框架的一项候选能力，而非整个系统的最终交付目标。两份文档的主线目前不同；本次不修改旧设计，也不将其中全部机制自动认定为新框架的既定实现。
+[原型设计](../designs/2026-11-23-dm-primitives-semantic-join-design.md)仍以预算内基数估计为主路径。本讨论记录的是新的研究范围：基数估计成为框架的一项候选能力，而非整个系统的最终交付目标。两份文档的主线目前不同；本次不修改旧设计，也不将其中全部机制自动认定为新框架的既定实现。
 
-已有小切片诊断没有支持当前状态代理的有效性，不能把新方向表述为已有实验已经验证。相关结果保留在[诊断记录](../experiments/2026-11-23-semceb-dm-small-slice-diagnostic-results.md)。
+已有小切片诊断没有支持当前状态代理的有效性，不能把新方向表述为已有实验已经验证。相关结果保留在[诊断记录](../experiments/semceb-dm-small-slice-diagnostic/2026-11-23-semceb-dm-small-slice-diagnostic-results.md)。
 
 ## 2. 首先固定任务语义
 
@@ -268,7 +268,7 @@ SemCEB 的位置应事先明确，不能在结果不理想后才改评测目标�
 
 在适合的半结构化数据任务上，分别验证完整连接或 top-k 检索的总费用、延迟与结果质量。若增加问答任务，还要区分检索证据质量和最终生成质量。
 
-SemCEB 的主要指标不能替代执行评测；它也不直接提供已核验的所有连接配对标签。关于数据与参考标签边界，见[认识澄清](2026-11-24-semceb-task-data-and-reference-clarifications.md)。正式实验前仍需确认并冻结任务、标签协议、预算、基线和指标。
+SemCEB 的主要指标不能替代执行评测；它也不直接提供已核验的所有连接配对标签。关于数据与参考标签边界，见[认识澄清](../experiments/semceb-dm-small-slice-diagnostic/2026-11-24-semceb-task-data-and-reference-clarifications.md)。正式实验前仍需确认并冻结任务、标签协议、预算、基线和指标。
 
 ## 9. 当前最重要的两个待验证假设
 

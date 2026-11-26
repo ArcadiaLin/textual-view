@@ -2,7 +2,7 @@
 
 日期：2026-11-23。状态：**已按本方案冻结并执行完成**，实验结果与诊断结论见 [2026-11-23-semceb-dm-small-slice-diagnostic-results.md](2026-11-23-semceb-dm-small-slice-diagnostic-results.md)。首次联通验证详见第 2 节。
 
-关联：[原型设计](../designs/2026-11-23-dm-primitives-semantic-join-prototype.md)、[最小工程与运行说明](../../experiments/semceb-dm/README.md)。
+关联：[原型设计](../../designs/2026-11-23-dm-primitives-semantic-join-design.md)、[最小工程与运行说明](../../../experiments/semceb-dm/README.md)。
 
 ## 1. 本轮要回答什么
 

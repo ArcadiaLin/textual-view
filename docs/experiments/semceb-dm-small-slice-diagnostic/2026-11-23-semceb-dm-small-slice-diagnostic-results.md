@@ -2,7 +2,7 @@
 
 日期：2026-11-23。状态：**已完成并归档（开发诊断切片，负面结果）**。
 
-关联：[实验方案](2026-11-23-semceb-dm-small-slice-diagnostic.md)、[原型设计](../designs/2026-11-23-dm-primitives-semantic-join-prototype.md)、[最小工程说明](../../experiments/semceb-dm/README.md)。
+关联：[实验方案](2026-11-23-semceb-dm-small-slice-diagnostic.md)、[原型设计](../../designs/2026-11-23-dm-primitives-semantic-join-design.md)、[最小工程说明](../../../experiments/semceb-dm/README.md)。
 
 > 注：本地运行产物位于 `.gitignore` 忽略目录 `runs/semceb-dm/q63-sf10-diagnostic-v1/`（含冻结清单 `frozen_manifest.json`、汇总数据 `diagnostic_summary.json`、矩阵 `matrices.npz`、图表 `figures/*.png` 及完整 `REPORT.md`）。
 
