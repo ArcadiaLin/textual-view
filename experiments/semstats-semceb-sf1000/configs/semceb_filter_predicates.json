@@ -1,0 +1,432 @@
+{
+  "schema_version": 1,
+  "provenance": "Agent-authored, query-by-query semantic adaptation of the 49 SemCEB single-table text filters. Conditions use only source query wording; no corpus examples, labels, cardinalities, or run results were used to author them.",
+  "source_queries": "references/repos/SemCEB/benchmark_queries/queries.jsonl",
+  "source_semceb_commit": "fec6bde7d1b23fc751f8701872fafda777a63942",
+  "queries": [
+    {
+      "case_id": "Q000",
+      "columns": [
+        "description_json"
+      ],
+      "source_filter_sha256": "ba7a2e94e21308cf0f38f7ebac56882dd2ee04ae31bb13bc713bf45b02af284e",
+      "predicate": "Based only on the field Description (description_json): The product is a tool or material for handmade paper crafts, especially card making, scrapbooking, die cutting, embossing, stenciling, or decorative paper projects."
+    },
+    {
+      "case_id": "Q001",
+      "columns": [
+        "description_json"
+      ],
+      "source_filter_sha256": "777578872e4dac9afdb0d5f372856796d32331a8596a1ebc2a9eb09c65ca63c9",
+      "predicate": "Based only on the field Description (description_json): The product description explicitly states that the product is not for kids."
+    },
+    {
+      "case_id": "Q002",
+      "columns": [
+        "details_json"
+      ],
+      "source_filter_sha256": "c27df7386f35b97ede351e0f0232be36968cd266c846271b2f2fadfdf02d51a7",
+      "predicate": "Based only on the field Details (details_json): The product properties do not mention the product's dimensions."
+    },
+    {
+      "case_id": "Q005",
+      "columns": [
+        "features_json"
+      ],
+      "source_filter_sha256": "51a2afa8c5d30981af40c6d0d93777afd6c437518875d55b670ce6fc5c64a601",
+      "predicate": "Based only on the field Features (features_json): The features text contains at least one emoji character."
+    },
+    {
+      "case_id": "Q006",
+      "columns": [
+        "review_text"
+      ],
+      "source_filter_sha256": "80169922c0e074aa6dccf1729ae45a3d6fec0601d88f73151133ecfc130e973f",
+      "predicate": "Based only on the field Review Text (review_text): The product review mentions a problem with shipping."
+    },
+    {
+      "case_id": "Q007",
+      "columns": [
+        "description_json"
+      ],
+      "source_filter_sha256": "8038850693ad03e7990871b18b84a520e73501ea84423678cd02148694098a22",
+      "predicate": "Based only on the field Description (description_json): The product description does not say who the product is intended for."
+    },
+    {
+      "case_id": "Q008",
+      "columns": [
+        "features_json"
+      ],
+      "source_filter_sha256": "c8c775c5d4788a5c54eb8e045b94afb824e6f14399a369489339563c78bf6745",
+      "predicate": "Based only on the field Features (features_json): The features do not mention whether refills are included."
+    },
+    {
+      "case_id": "Q009",
+      "columns": [
+        "features_json"
+      ],
+      "source_filter_sha256": "cff238a08755d20988f59579defbf6b43d29a8c069b3452c7559e56a50579fd5",
+      "predicate": "Based only on the field Features (features_json): The package weight is less than one pound."
+    },
+    {
+      "case_id": "Q010",
+      "columns": [
+        "details_json"
+      ],
+      "source_filter_sha256": "7b8f3cdda408cba84697185851e1cf077799e8380f77830f803f96d10bc0a14b",
+      "predicate": "Based only on the field Details (details_json): The product is ranked within the top 500 best sellers in its category."
+    },
+    {
+      "case_id": "Q011",
+      "columns": [
+        "details_json"
+      ],
+      "source_filter_sha256": "68647c70060df578ba56b14a25e22bdd5af65ecc0e80196dda83d45bfeb0d4a8",
+      "predicate": "Based only on the field Details (details_json): The details describe a heavy product weighing more than ten pounds."
+    },
+    {
+      "case_id": "Q012",
+      "columns": [
+        "details_json"
+      ],
+      "source_filter_sha256": "241c5c87fad8bf16e8fc4970bad5b25dc45c515f7f5859be0c5a11bb8d9f3c4b",
+      "predicate": "Based only on the field Details (details_json): The details do not mention a newer version of the product."
+    },
+    {
+      "case_id": "Q013",
+      "columns": [
+        "details_json"
+      ],
+      "source_filter_sha256": "f6ff542a4e89ae99a761df50b16110ea6aa08d29ad9fb2c29e39a07ea2c7c06f",
+      "predicate": "Based only on the field Details (details_json): The dimensions describe a thin item less than one inch thick."
+    },
+    {
+      "case_id": "Q014",
+      "columns": [
+        "description_json"
+      ],
+      "source_filter_sha256": "ae478dc4f63020617f84045b97e156d0b9e564b87d3534b530074ed266d28b26",
+      "predicate": "Based only on the field Description (description_json): The product offers more than a dozen colors to choose from."
+    },
+    {
+      "case_id": "Q015",
+      "columns": [
+        "description_json"
+      ],
+      "source_filter_sha256": "82fd5c222dd51306e7ff21c9e961c349abb102a46685517dbba0ef652701539e",
+      "predicate": "Based only on the field Description (description_json): The description uses shimmering color language."
+    },
+    {
+      "case_id": "Q016",
+      "columns": [
+        "description_json"
+      ],
+      "source_filter_sha256": "1d2f64f126b3ab15a7173730396e99c402987edb586c8b31a2fdbcec21e6dce5",
+      "predicate": "Based only on the field Description (description_json): The description gives a method to further improve the product's effect or usage."
+    },
+    {
+      "case_id": "Q017",
+      "columns": [
+        "details_json"
+      ],
+      "source_filter_sha256": "08f8d97ae7c3842cc8d163998f71db535ad933c6efac5f48ce19043577f6fedb",
+      "predicate": "Based only on the field Details (details_json): The included components list more than ten separate items."
+    },
+    {
+      "case_id": "Q018",
+      "columns": [
+        "review_text"
+      ],
+      "source_filter_sha256": "5ca19fdc462af6ee209e4767419be8498aad99dd853701dd6f8bbf5a1f06ea5a",
+      "predicate": "Based only on the field Review Text (review_text): The review mentions that shipping took more than a week."
+    },
+    {
+      "case_id": "Q019",
+      "columns": [
+        "review_text"
+      ],
+      "source_filter_sha256": "1c2e480ebd4eb5a07401ec7b8c9e5aadd0bd959f352788fb085e31dba27d88fc",
+      "predicate": "Based only on the field Review Text (review_text): The review mentions that shipping took more than two weeks."
+    },
+    {
+      "case_id": "Q020",
+      "columns": [
+        "review_title",
+        "review_text"
+      ],
+      "source_filter_sha256": "091e1db05ebea031de374d596341e55f3412e72cbdfd5631ebdad9cf75ce2748",
+      "predicate": "Based only on the fields Review Title (review_title) and Review Text (review_text): The review mentions that the product never arrived."
+    },
+    {
+      "case_id": "Q021",
+      "columns": [
+        "review_title",
+        "review_text"
+      ],
+      "source_filter_sha256": "7aaf890260f3b22dbebce51f777ab2d2de56469514ae8ee9aa835b3774ddf176",
+      "predicate": "Based only on the fields Review Title (review_title) and Review Text (review_text): The review mentions a problem with the product, but that the product was swiftly replaced by the company."
+    },
+    {
+      "case_id": "Q022",
+      "columns": [
+        "review_title",
+        "review_text"
+      ],
+      "source_filter_sha256": "e7e417fefffdeffe190f953e0dc8a43461fc3b350480f83f409e687e0a2fd47d",
+      "predicate": "Based only on the fields Review Title (review_title) and Review Text (review_text): The review mentions that a product with the wrong color was delivered."
+    },
+    {
+      "case_id": "Q023",
+      "columns": [
+        "review_title",
+        "review_text"
+      ],
+      "source_filter_sha256": "284b331142d14536b399e5f5d16750a40f817a45bb7469600fbca69e96bdc324",
+      "predicate": "Based only on the fields Review Title (review_title) and Review Text (review_text): The review mentions that the wrong quantity of the product was delivered."
+    },
+    {
+      "case_id": "Q024",
+      "columns": [
+        "review_title",
+        "review_text"
+      ],
+      "source_filter_sha256": "f4fd3586b0ea72470258c10897f51a3aca47c54b39bb11ad94017b660aa75304",
+      "predicate": "Based only on the fields Review Title (review_title) and Review Text (review_text): The review mentions that a broken product was delivered."
+    },
+    {
+      "case_id": "Q025",
+      "columns": [
+        "review_title",
+        "review_text"
+      ],
+      "source_filter_sha256": "0242f0aabe8b5290cd06ead069166433df34d3bc72c07b5bff4c1b31599ef734",
+      "predicate": "Based only on the fields Review Title (review_title) and Review Text (review_text): The review mentions that the person bought this product as an upgrade from a previous product, and was satisfied with the improvement."
+    },
+    {
+      "case_id": "Q026",
+      "columns": [
+        "review_title",
+        "review_text"
+      ],
+      "source_filter_sha256": "a0b98b29cd15e5c853b860350a9ded7bb7a5834ae84e536df99835bbae3b3105",
+      "predicate": "Based only on the fields Review Title (review_title) and Review Text (review_text): The review mentions that the person bought this product as an upgrade from a previous product, and was not satisfied with the upgrade."
+    },
+    {
+      "case_id": "Q028",
+      "columns": [
+        "product_title",
+        "description_json",
+        "details_json",
+        "features_json"
+      ],
+      "source_filter_sha256": "c00206951f9ee6657b9a9eee0df516422192b68dd16efbf8dc538fd2d73fdf98",
+      "predicate": "Based only on the fields Title (product_title), Description (description_json), Details (details_json) and Features (features_json): The advertised product is some type of glue that can be used for wood."
+    },
+    {
+      "case_id": "Q029",
+      "columns": [
+        "product_title",
+        "description_json",
+        "details_json",
+        "features_json"
+      ],
+      "source_filter_sha256": "ba90895e4632a4b8e9fe29d3bb371468e4714c03b1a055e4690c2358632f344d",
+      "predicate": "Based only on the fields Title (product_title), Description (description_json), Details (details_json) and Features (features_json): The advertised product is a book about arts and crafts."
+    },
+    {
+      "case_id": "Q030",
+      "columns": [
+        "review_text"
+      ],
+      "source_filter_sha256": "1d3b5e26087749feeb941864fb0e3c15b27b8f305b1a07adc175294dc05b35c0",
+      "predicate": "Based only on the field Review Text (review_text): The review praises the product quality overall, but says it is not suitable for the reviewer's particular situation."
+    },
+    {
+      "case_id": "Q031",
+      "columns": [
+        "review_text"
+      ],
+      "source_filter_sha256": "7398fba237d474b95c8877e89f1b38a0feb56c94d3f479ab80b5317f90ac723a",
+      "predicate": "Based only on the field Review Text (review_text): The review says the product is good or useful, but its price is too high compared with the value received."
+    },
+    {
+      "case_id": "Q032",
+      "columns": [
+        "review_text"
+      ],
+      "source_filter_sha256": "f789622c4aa24bfd68b7341e61635790305e35b8623823484605f2ef6963bf1b",
+      "predicate": "Based only on the field Review Text (review_text): The review says this product is good, but explicitly names or describes a better alternative."
+    },
+    {
+      "case_id": "Q033",
+      "columns": [
+        "verified_purchase",
+        "review_text"
+      ],
+      "source_filter_sha256": "6d02449dfbc886b115edd8d71122bdb8db3385094724ed109fe82527884b7aeb",
+      "predicate": "Based only on the fields Verified Purchase (verified_purchase) and Review Text (review_text): The purchase is verified according to the Verified Purchase field, and the review text clearly says not to recommend the product."
+    },
+    {
+      "case_id": "Q034",
+      "columns": [
+        "review_title",
+        "review_text"
+      ],
+      "source_filter_sha256": "6735db655ee08e091a1a3eb77b01e1d9c8d7f1a1c8dbce8cda1ebb43303cae21",
+      "predicate": "Based only on the fields Review Title (review_title) and Review Text (review_text): The review title contradicts the main sentiment or claim in the review text."
+    },
+    {
+      "case_id": "Q035",
+      "columns": [
+        "review_text"
+      ],
+      "source_filter_sha256": "fd76e2db307754071d2ea2fdc683d21d8c5baeb098f23c9e4388f65ccdc7d092",
+      "predicate": "Based only on the field Review Text (review_text): The review says the product is used as an auxiliary item for the user's own personal belonging or setup."
+    },
+    {
+      "case_id": "Q036",
+      "columns": [
+        "details_json"
+      ],
+      "source_filter_sha256": "dd2f68cdf9cfd7ef28fe8deabc587be705ab5d765d1e0a1669f15390168f60f6",
+      "predicate": "Based only on the field Details (details_json): The product details suggest this is an early-2000s product, first published or made available before 2010."
+    },
+    {
+      "case_id": "Q037",
+      "columns": [
+        "details_json"
+      ],
+      "source_filter_sha256": "4b77b8829b2a38c09c4fd2bc00ad512604d0cde26610e71cfc43eb15b9fdc06c",
+      "predicate": "Based only on the field Details (details_json): The product details say the manufacturer and brand are the same name."
+    },
+    {
+      "case_id": "Q038",
+      "columns": [
+        "description_json"
+      ],
+      "source_filter_sha256": "29ff6ee3d86faf8b778f9f4d9e75005bce0fd4ee7286bd360ffb9395a13fdf0b",
+      "predicate": "Based only on the field Description (description_json): The product description says it fixes a real-world use-case limitation and gives a concrete use case."
+    },
+    {
+      "case_id": "Q039",
+      "columns": [
+        "description_json"
+      ],
+      "source_filter_sha256": "f09799c11886537c4ffca35da7536c38e3b605a399d6d77abfcdc9130f167e35",
+      "predicate": "Based only on the field Description (description_json): The product description energetically encourages the user to buy it or try it, using an enthusiastic promotional tone."
+    },
+    {
+      "case_id": "Q040",
+      "columns": [
+        "description_json"
+      ],
+      "source_filter_sha256": "470ab298fe366d0ae988ca09476d2d264f61d3c3ea69a0082d28d03d0b909bd4",
+      "predicate": "Based only on the field Description (description_json): The product description does not clearly say who the product is intended for."
+    },
+    {
+      "case_id": "Q041",
+      "columns": [
+        "details_json"
+      ],
+      "source_filter_sha256": "6ce6a1953ceadb39e585cb5fefbf13987137f54e4dec8eaad42fe184fca5b116",
+      "predicate": "Based only on the field Details (details_json): The product details do not provide a clear warranty duration or coverage period."
+    },
+    {
+      "case_id": "Q044",
+      "columns": [
+        "product_title",
+        "details_json"
+      ],
+      "source_filter_sha256": "208b4d4be423ffdf8825ca8425470d99bba76bd7150647ff98d14a6cc69ab8d3",
+      "predicate": "Based only on the fields Title (product_title) and Details (details_json): The product title asserts a specific quantity (e.g., a number of pieces, items, or units), but the product details do not confirm or are inconsistent with that quantity."
+    },
+    {
+      "case_id": "Q045",
+      "columns": [
+        "product_title",
+        "features_json",
+        "description_json",
+        "details_json"
+      ],
+      "source_filter_sha256": "9197febffa037ca424d6f786649e1dcc80d742404ab813549040e1c44c7b24d6",
+      "predicate": "Based only on the fields Title (product_title), Features (features_json), Description (description_json) and Details (details_json): The product is suitable for use by children under 10."
+    },
+    {
+      "case_id": "Q046",
+      "columns": [
+        "product_title",
+        "features_json"
+      ],
+      "source_filter_sha256": "aaeaa0dee9fadfa46cff122073977016b06931fec06fb091ae863bd1d7380ce6",
+      "predicate": "Based only on the fields Title (product_title) and Features (features_json): The product listing mentions a specific piece count or item count greater than 50, either in the title or features."
+    },
+    {
+      "case_id": "Q047",
+      "columns": [
+        "review_text"
+      ],
+      "source_filter_sha256": "c44584368e6a57201478d019561d8c19d96eba3f0e96ab6c606423f7621f2c7a",
+      "predicate": "Based only on the field Review Text (review_text): The review references a specific occasion, season, or holiday as the context for purchasing or using the product (e.g., Christmas, a birthday, a craft fair)."
+    },
+    {
+      "case_id": "Q048",
+      "columns": [
+        "review_text"
+      ],
+      "source_filter_sha256": "c63545b74812843c7ce809e56760900b2016adbcc46e9a25e9eb9d5580395fc6",
+      "predicate": "Based only on the field Review Text (review_text): The review describes a product that started out well but degraded over time."
+    },
+    {
+      "case_id": "Q049",
+      "columns": [
+        "review_text"
+      ],
+      "source_filter_sha256": "9a0391b01924052608c57719b74dc13e65a110bde3baa634e892e2fbf2a34e67",
+      "predicate": "Based only on the field Review Text (review_text): The review contains extensive descriptions about both positive and negative aspects of the product."
+    },
+    {
+      "case_id": "Q050",
+      "columns": [
+        "product_title",
+        "features_json",
+        "description_json",
+        "details_json"
+      ],
+      "source_filter_sha256": "db574db45eccbbd6529114c8682fbc66951e6b8412f4ae92653f204baae259d7",
+      "predicate": "Based only on the fields Title (product_title), Features (features_json), Description (description_json) and Details (details_json): The product can be applied along the raw cut edges of a fabric piece immediately after cutting, in order to stop the threads from fraying or unraveling during handling, while remaining flexible enough that the treated edge can still be sewn through cleanly with a needle and thread, and without leaving a visible stain or color change on the fabric surface that would show in the finished piece."
+    },
+    {
+      "case_id": "Q056",
+      "columns": [
+        "product_title",
+        "description_json",
+        "details_json",
+        "features_json"
+      ],
+      "source_filter_sha256": "2882a944dcb1039a5e0653858d887a0baa2561bf0908406527167e32f556c716",
+      "predicate": "Based only on the fields Title (product_title), Description (description_json), Details (details_json) and Features (features_json): The product is a filling primer with light gray color. If possible, the filler should be sufficiently thick to cover up layers visible from a 3D printer."
+    },
+    {
+      "case_id": "Q057",
+      "columns": [
+        "product_title",
+        "description_json",
+        "details_json",
+        "features_json"
+      ],
+      "source_filter_sha256": "7740c9fa8caa3816d681f81d678a787610f4b748d59e515d7bbd9ea808fda6e7",
+      "predicate": "Based only on the fields Title (product_title), Description (description_json), Details (details_json) and Features (features_json): The product is spray paint that can be used to color dinosaur fossil replicas made of plastic so that they look like museum specimens."
+    },
+    {
+      "case_id": "Q058",
+      "columns": [
+        "product_title",
+        "description_json",
+        "details_json",
+        "features_json"
+      ],
+      "source_filter_sha256": "a6359cd374d20d78ede937c2677b5450cfb026b8d15bec551d2f3fe1be8db838",
+      "predicate": "Based only on the fields Title (product_title), Description (description_json), Details (details_json) and Features (features_json): The product is some supplementary material for a 3D printer."
+    }
+  ]
+}

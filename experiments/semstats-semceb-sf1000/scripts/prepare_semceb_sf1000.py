@@ -28,6 +28,7 @@ SEMCEB_DATA_DIR = REPO_ROOT / "references" / "datasets" / "semceb" / "amazon-rev
 SEMCEB_REPO_DIR = REPO_ROOT / "references" / "repos" / "SemCEB"
 SEMSTATS_REPO_DIR = REPO_ROOT / "references" / "repos" / "SemanticCardinalityEstimation"
 OUT_DIR = EXP_DIR / "data"
+PREDICATES_PATH = EXP_DIR / "configs" / "semceb_filter_predicates.json"
 
 SCALE_FACTOR = 1000
 EXPECTED_PRODUCTS_QUERIES = 30
@@ -61,45 +62,36 @@ def git_head(repo_dir: Path) -> str:
         return "unknown"
 
 
-def clean_predicate(raw_filter: str) -> str:
-    """Strip SemCEB trailing column context templates so the predicate reads cleanly without artifacts."""
-    s = strip_alias_placeholders(raw_filter).strip()
-    # 1. Remove trailing "Does the following product (description) match my requirements? ..."
-    s = re.sub(
-        r"\s*Does the following product(?: description)? match my requirements\?.*$",
-        "",
-        s,
-        flags=re.DOTALL,
-    ).strip()
-    # 2. Remove trailing "The product review is: {review_text}"
-    s = re.sub(r"\s*The product review is:\s*\{[a-zA-Z0-9_]+\}\s*$", "", s).strip()
-    # 3. Remove trailing labeled column blocks like "Title: {product_title}. Details: {details_json}"
-    #    or "Verified purchase: {verified_purchase}. Review: {review_text}"
-    #    or "Review title: {review_title}. Review text: {review_text}"
-    label_group = r"(?:Title|Review title|Review text|Review|Features|Description|Details|Verified purchase)"
-    s = re.sub(
-        rf"(?:\s+{label_group}\s*:\s*\{{[a-zA-Z0-9_]+\}}\.?)+$",
-        "",
-        s,
-        flags=re.IGNORECASE,
-    ).strip()
-    # 4. Remove trailing ": {col1} - {col2}, {col3}" or "? {col1} - {col2}, {col3}" (preserving "?")
-    s = re.sub(
-        r"\s*:\s*\{[a-zA-Z0-9_]+\}(?:\s*[-,]\s*\{[a-zA-Z0-9_]+\})*\s*$",
-        "",
-        s,
-    ).strip()
-    s = re.sub(
-        r"(\?)\s*\{[a-zA-Z0-9_]+\}(?:\s*[-,]\s*\{[a-zA-Z0-9_]+\})*\s*$",
-        r"\1",
-        s,
-    ).strip()
-    s = re.sub(r"\s+", " ", s).strip()
-    if PLACEHOLDER_RE.search(s):
-        raise ValueError(f"Unstripped placeholder in predicate: {s!r} (from {raw_filter!r})")
-    if re.search(r"[-,:;]\s*$", s):
-        raise ValueError(f"Trailing punctuation artifact in predicate: {s!r} (from {raw_filter!r})")
-    return s
+def load_scoped_predicates(path: Path = PREDICATES_PATH) -> dict[str, dict]:
+    """Load the inspectable, individually authored query adaptations."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload["schema_version"] != 1:
+        raise ValueError(f"Unsupported predicate mapping schema in {path}")
+    out = {}
+    for row in payload["queries"]:
+        case_id = row["case_id"]
+        if case_id in out:
+            raise ValueError(f"Duplicate predicate mapping for {case_id}")
+        out[case_id] = row
+    return out
+
+
+def scoped_predicate(case_id: str, raw_filter: str, columns: list[str], mappings: dict) -> str:
+    """Require exact source and field matches; never silently fall back to regex rewriting."""
+    if case_id not in mappings:
+        raise ValueError(f"Missing field-scoped predicate for {case_id}")
+    mapping = mappings[case_id]
+    source_sha256 = hashlib.sha256(raw_filter.encode("utf-8")).hexdigest()
+    if mapping["source_filter_sha256"] != source_sha256:
+        raise ValueError(f"Source filter changed for {case_id}; review its field-scoped predicate")
+    if mapping["columns"] != list(dict.fromkeys(columns)):
+        raise ValueError(f"Field scope mismatch for {case_id}")
+    pred = mapping["predicate"]
+    if not pred.strip() or "{" in pred or "}" in pred:
+        raise ValueError(f"Empty predicate or unresolved template for {case_id}")
+    if any(f"({col})" not in pred for col in mapping["columns"]):
+        raise ValueError(f"Predicate does not state every source field for {case_id}")
+    return pred
 
 
 def fmt_val(v) -> str:
@@ -235,8 +227,11 @@ def load_ground_truth_index() -> dict[tuple[str, str], dict]:
     return out
 
 
-def export_queries(gt_index: dict[tuple[str, str], dict]) -> tuple[list[dict], list[dict]]:
+def export_queries(
+    gt_index: dict[tuple[str, str], dict], predicate_path: Path = PREDICATES_PATH
+) -> tuple[list[dict], list[dict]]:
     q_path = SEMCEB_REPO_DIR / "benchmark_queries" / "queries.jsonl"
+    mappings = load_scoped_predicates(predicate_path)
     products_qs, reviews_qs = [], []
     with open(q_path, encoding="utf-8") as f:
         for line in f:
@@ -254,14 +249,17 @@ def export_queries(gt_index: dict[tuple[str, str], dict]) -> tuple[list[dict], l
             gt = gt_index.get((ds, norm_filter)) or gt_index.get((ds, raw_filter))
             if gt is None:
                 raise KeyError(f"Missing sf{SCALE_FACTOR} ground truth for Q{q['id']:03d} ({ds})")
-            pred = clean_predicate(raw_filter)
+            case_id = f"Q{q['id']:03d}"
+            pred = scoped_predicate(case_id, raw_filter, cols, mappings)
             rec = {
-                "case_id": f"Q{q['id']:03d}",
+                "case_id": case_id,
                 "query_id": int(q["id"]),
                 "type": q["type"],
                 "category": q.get("category", []),
                 "columns": cols,
+                "source_filter": raw_filter,
                 "raw_filter": norm_filter,
+                "predicate_source": "configs/semceb_filter_predicates.json",
                 "query": pred,
                 "predicates": [pred],
                 "ground_truth_cardinality": int(gt["cardinality"]),
@@ -276,6 +274,9 @@ def export_queries(gt_index: dict[tuple[str, str], dict]) -> tuple[list[dict], l
         raise AssertionError(f"Expected {EXPECTED_PRODUCTS_QUERIES} products queries, got {len(products_qs)}")
     if len(reviews_qs) != EXPECTED_REVIEWS_QUERIES:
         raise AssertionError(f"Expected {EXPECTED_REVIEWS_QUERIES} reviews queries, got {len(reviews_qs)}")
+    used = {q["case_id"] for q in products_qs + reviews_qs}
+    if used != set(mappings):
+        raise ValueError(f"Unused predicate mappings: {sorted(set(mappings) - used)}")
     return products_qs, reviews_qs
 
 
@@ -302,6 +303,7 @@ def main() -> None:
         "scale_factor": SCALE_FACTOR,
         "semceb_commit": git_head(SEMCEB_REPO_DIR),
         "semstats_commit": git_head(SEMSTATS_REPO_DIR),
+        "predicate_mapping_sha256": sha256_file(PREDICATES_PATH),
         "products": {
             "rows": len(products_df),
             "queries": len(prod_qs),

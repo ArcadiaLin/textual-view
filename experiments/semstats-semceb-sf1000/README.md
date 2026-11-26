@@ -28,11 +28,27 @@ on the `sf1000` pure-text `AI_FILTER` slices:
   selected stratum. `evaluate_semceb.py` reports actual `sample_size` (draws) and `n_unique`
   (distinct judgements) per query and in aggregate.
 - **Field scope**:
+  - `configs/semceb_filter_predicates.json` contains 49 individually authored evaluation conditions,
+    each explicitly restricted to the original query's fields. Both `query` (node selection and
+    sampling) and the single `predicates` entry (MLP scoring) use this same condition. For example,
+    Q009 reads: "Based only on the field Features (features_json): The package weight is less than
+    one pound."
+  - These are agent-authored expressions derived from the source query text, without using corpus
+    examples, reference cardinalities, or run results to write them. They preserve numeric limits,
+    negation, cross-field comparisons, and optional requirements (e.g., Q056's "If possible").
+    Source-filter SHA256 and ordered field lists are checked on export; missing, stale, duplicate,
+    or unused mappings cause an error. The data manifest records the mapping's SHA256. After editing
+    the mapping, rerun `scripts/prepare_semceb_sf1000.py` to regenerate the evaluation inputs.
   - `eval_mlp` (`MLPJudge`) operates on whole-record document embeddings (`documents.jsonl`), which is
-    inherent to SemStats's single-corpus design.
+    inherent to SemStats's single-corpus design. Explicit scope in the query communicates the target
+    condition; it does not mechanically mask other fields from these embeddings.
   - `eval_llm_scoped` (`scripts/run_scoped_llm_judge.py`) reuses the exact `plans_single.json` from
     `eval_mlp`, but feeds **only the columns referenced by each SemCEB query's `raw_filter`** from
     `records.jsonl`, avoiding field leakage (e.g., Q009 sees only `features_json`, not `details_json`).
+    Its prompt still uses the original template with aliases normalized, independent of the authored
+    expression. Exported `source_filter` preserves the original template including aliases.
+  - The mapping changes evaluation input representation only. Training-query generation, teacher
+    labeling, model training, and the estimation algorithms remain those of the upstream code.
 - **q-error definition**: `evaluate_semceb.py` reports **unsigned q-error clamped at 1.0**:
   `max(max(1, est), max(1, true)) / min(max(1, est), max(1, true))` (always `>= 1.0`, safe for
   `true = 0` such as Q056). Note that SemCEB's native reporting uses *signed* q-error (negative for
@@ -51,6 +67,9 @@ cd experiments/semstats-semceb-sf1000
 uv sync
 uv run python scripts/prepare_semceb_sf1000.py
 uv run python scripts/download_top2vec_model.py
+
+# Validate query adaptation without model calls or training
+uv run python -m unittest discover -s tests
 
 # 2. Run products (30 min label budget) and/or reviews (60 min label budget)
 bash scripts/run_semstats.sh products run1 30
