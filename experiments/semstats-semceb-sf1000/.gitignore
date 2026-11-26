@@ -1,0 +1,7 @@
+# Local generated data, caches, model weights, and run artifacts.
+.venv/
+data/
+models/
+workspace/
+__pycache__/
+*.pyc

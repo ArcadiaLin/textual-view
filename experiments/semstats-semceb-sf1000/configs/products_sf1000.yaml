@@ -1,0 +1,141 @@
+workspace: ../workspace/products_sf1000
+
+llm:
+  base_url: http://localhost:30000/v1
+  model: qwen3.8-27b
+  cache: ../workspace/products_sf1000/llm_cache.jsonl
+  workers: 16
+  extra_body:
+    chat_template_kwargs:
+      enable_thinking: false
+
+embedding:
+  base_url: http://localhost:8002/v1
+  model: qwen3-embedding-8b
+  max_tokens: 4096
+  query_vectors: ../workspace/products_sf1000/query_vectors.npz
+
+data:
+  corpus: ../data/products/corpus/documents.jsonl
+  embeddings: ../workspace/products_sf1000/doc_embeddings.npy
+  embedding_manifest: ../workspace/products_sf1000/doc_embeddings.manifest.json
+
+evaluation:
+  queries:
+    single: ../data/products/queries/single.json
+  labels: ../data/products/queries/single.json
+
+judge:
+  chunk_chars: 40000
+
+select:
+  votes: 1
+  temperature: 0.0
+
+sample:
+  # Note: on 1,000 products, budget_ratio=0.01 sets base budget=10, while sample.py enforces MIN_SHARE=6 per stratum.
+  budget_ratio: 0.01
+  seed: 42
+
+catalog:
+  sample_ratio: 1.0
+  min_sample_docs: 1000
+  seed: 42
+  top2vec:
+    embedding_model: all-MiniLM-L6-v2
+    # Resolved relative to CWD (experiments/semstats-semceb-sf1000) by upstream catalog.py
+    model_path: models/all-MiniLM-L6-v2
+    chunk_chars: 1500
+    # Scaled for 1,000-doc corpus (defaults 20/50/10 are for 10k+ corpora)
+    min_count: 5
+    min_cluster_size: 15
+    min_samples: 5
+  phrases_per_doc: 5
+  max_root_phrases: 500
+  max_phrase_len: 5
+  stop_phrase_share: 0.1
+  K_root: 12
+  K: 5
+  H: 3
+  max_new_dims: 12
+  min_freq_root: 0.01
+  min_freq: 0.005
+  min_phrases: 6
+  min_docs: 20
+  min_assigned_share: 0.8
+  merge_cos: 0.93
+  tries: 3
+  max_tokens_identify: 8192
+
+index:
+  mode: multi
+  multi:
+    sample_rate: 0.1
+    root_boost: 2.0
+    child_floor: 5
+    floor_pool: 15
+    xgb_trees: 200
+    xgb_threshold: 0.5
+    min_pos: 3
+    min_neg: 3
+    xgb_jobs: 8
+    seed: 42
+
+query_gen:
+  seed: 2026
+  doc_label:
+    n_docs: 400
+    batch: 20
+    excerpt_chars: 600
+    min_docs: 3
+  catalog_axes:
+    k_root: 20
+    k_field: 10
+    k_type: 10
+
+label:
+  seed: 2026
+  per_round: 15
+  near_pool: 400
+  chunk_pairs: 4000
+
+train:
+  protocol: kfold
+  k: 5
+  seed: 2026
+  hidden: 1024
+  layers: 2
+  dropout: 0.1
+  lr: 1.0e-4
+  epochs: 80
+  batch_size: 4096
+  neg_weight: 0.333
+  device: cuda
+
+dataset:
+  name: semceb_products_sf1000
+  collection: "an e-commerce catalog of arts, crafts, and sewing products"
+  collection_kind: "an arts and crafts product catalog"
+  whole_collection: "the whole arts and crafts product catalog"
+  catalog_owner: "an arts and crafts product"
+  root_hint: "Top-level dimensions should be broad product domains or craft disciplines (e.g., Painting Supplies, Sewing and Fabrics, Paper Crafts, Jewelry Making, Tools and Adhesives)."
+  unit: "product listing"
+  doc_label_intro: "Amazon arts, crafts, and sewing product listings"
+  doc_label_task: "For each product listing, assign three labels: (1) craft domain, (2) specific product category or material, and (3) product attribute or usage type."
+  tier_names: ["field", "topic", "type"]
+  root_task: "List {k} broad product categories or attributes that shoppers commonly filter by across this arts and crafts catalog."
+  axes_task: 'Under "{node}", list {k_field} specific sub-categories or materials (Axis A) and {k_type} product attributes, properties, or usage types (Axis B).'
+  judge_role: "You are an e-commerce product analyst verifying whether a product listing satisfies a semantic filter condition."
+  judge_unit: "one product listing (with title, features, description, and details)"
+  judge_ask_system: "the product listing satisfies"
+  judge_ask: "Does this product listing satisfy the condition"
+  judge_ask_multi: "Does this product listing satisfy"
+  judge_and_rule: "Every listed condition must be supported by the product listing."
+  judge_rule: "Base your judgment strictly on the provided product listing text. If a condition asks for absence or negation (e.g., does not mention X), verify carefully against all provided fields."
+  label_noun: "condition"
+  label_plural: "conditions"
+  multi:
+    collection: "Amazon arts, crafts, and sewing product listings"
+    unit: "product listing"
+    label_kind: "the craft domains, product types, or materials represented by the product"
+    relevance: "Assign a category if the product is directly used for, made for, or clearly belongs to that craft domain or product type."

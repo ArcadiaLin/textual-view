@@ -1,0 +1,17 @@
+[project]
+name = "semstats-semceb-sf1000"
+version = "0.1.0"
+description = "Reproduce SemStats (MLPJudge + multi-membership index) on SemCEB sf1000 pure-text filters"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "duckdb>=1.2.0",
+    "huggingface-hub>=0.26.0",
+    "numpy>=1.26.0",
+    "pandas>=2.2.0",
+    "pyarrow>=17.0.0",
+    "pyyaml>=6.0.2",
+    "sentence-transformers>=3.0.0",
+    "top2vec>=1.0.36",
+    "torch>=2.4.0",
+    "xgboost>=2.1.0",
+]

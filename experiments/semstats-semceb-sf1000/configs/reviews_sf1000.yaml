@@ -1,0 +1,139 @@
+workspace: ../workspace/reviews_sf1000
+
+llm:
+  base_url: http://localhost:30000/v1
+  model: qwen3.8-27b
+  cache: ../workspace/reviews_sf1000/llm_cache.jsonl
+  workers: 16
+  extra_body:
+    chat_template_kwargs:
+      enable_thinking: false
+
+embedding:
+  base_url: http://localhost:8002/v1
+  model: qwen3-embedding-8b
+  max_tokens: 4096
+  query_vectors: ../workspace/reviews_sf1000/query_vectors.npz
+
+data:
+  corpus: ../data/reviews/corpus/documents.jsonl
+  embeddings: ../workspace/reviews_sf1000/doc_embeddings.npy
+  embedding_manifest: ../workspace/reviews_sf1000/doc_embeddings.manifest.json
+
+evaluation:
+  queries:
+    single: ../data/reviews/queries/single.json
+  labels: ../data/reviews/queries/single.json
+
+judge:
+  chunk_chars: 40000
+
+select:
+  votes: 1
+  temperature: 0.0
+
+sample:
+  budget_ratio: 0.01
+  seed: 42
+
+catalog:
+  sample_ratio: 0.1
+  min_sample_docs: 1000
+  seed: 42
+  top2vec:
+    embedding_model: all-MiniLM-L6-v2
+    # Resolved relative to CWD (experiments/semstats-semceb-sf1000) by upstream catalog.py
+    model_path: models/all-MiniLM-L6-v2
+    chunk_chars: 1500
+    min_count: 15
+    min_cluster_size: 30
+    min_samples: 8
+  phrases_per_doc: 5
+  max_root_phrases: 500
+  max_phrase_len: 5
+  stop_phrase_share: 0.1
+  K_root: 16
+  K: 5
+  H: 3
+  max_new_dims: 16
+  min_freq_root: 0.01
+  min_freq: 0.0025
+  min_phrases: 8
+  min_docs: 30
+  min_assigned_share: 0.8
+  merge_cos: 0.93
+  tries: 3
+  max_tokens_identify: 8192
+
+index:
+  mode: multi
+  multi:
+    sample_rate: 0.1
+    root_boost: 2.0
+    child_floor: 5
+    floor_pool: 15
+    xgb_trees: 200
+    xgb_threshold: 0.5
+    min_pos: 3
+    min_neg: 3
+    xgb_jobs: 8
+    seed: 42
+
+query_gen:
+  seed: 2026
+  doc_label:
+    n_docs: 600
+    batch: 20
+    excerpt_chars: 500
+    min_docs: 3
+  catalog_axes:
+    k_root: 20
+    k_field: 10
+    k_type: 10
+
+label:
+  seed: 2026
+  per_round: 15
+  near_pool: 800
+  chunk_pairs: 6000
+
+train:
+  protocol: kfold
+  k: 5
+  seed: 2026
+  hidden: 1024
+  layers: 2
+  dropout: 0.1
+  lr: 1.0e-4
+  epochs: 80
+  batch_size: 4096
+  neg_weight: 0.333
+  device: cuda
+
+dataset:
+  name: semceb_reviews_sf1000
+  collection: "a collection of customer reviews for arts, crafts, and sewing products"
+  collection_kind: "a customer review collection"
+  whole_collection: "the whole customer review collection"
+  catalog_owner: "a customer review"
+  root_hint: "Top-level dimensions should capture major review themes, feedback aspects, or craft product experiences (e.g., Product Quality, Shipping and Delivery, Value and Pricing, Craft Use Cases, Defects and Returns)."
+  unit: "product review"
+  doc_label_intro: "Amazon customer reviews of arts, crafts, and sewing products"
+  doc_label_task: "For each review, assign three labels: (1) main feedback aspect (e.g., quality, shipping, price, usability), (2) specific topic or issue mentioned, and (3) sentiment or outcome type."
+  tier_names: ["field", "topic", "type"]
+  root_task: "List {k} common review themes, customer issues, or feedback types across these product reviews."
+  axes_task: 'Under "{node}", list {k_field} specific topics or issues (Axis A) and {k_type} sentiment, comparison, or outcome patterns (Axis B).'
+  judge_role: "You are a customer feedback analyst verifying whether a product review satisfies a semantic filter condition."
+  judge_unit: "one customer product review (with title, rating, verified purchase flag, and review text)"
+  judge_ask_system: "the product review satisfies"
+  judge_ask: "Does this product review satisfy the condition"
+  judge_ask_multi: "Does this product review satisfy"
+  judge_and_rule: "Every listed condition must be supported by the product review."
+  judge_rule: "Base your judgment strictly on the provided review text and metadata. Answer 1 only when the review clearly satisfies the stated condition."
+  label_noun: "condition"
+  label_plural: "conditions"
+  multi:
+    collection: "Amazon customer reviews for arts, crafts, and sewing products"
+    unit: "product review"
+    label_kind: "the feedback aspects, product experiences, issues, or usage contexts discussed in the review"
+    relevance: "Assign a category if the review substantively discusses that aspect, issue, or product experience."

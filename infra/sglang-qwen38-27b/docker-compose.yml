@@ -1,0 +1,97 @@
+services:
+  sglang-qwen38-27b:
+    # Pin the locally installed SGLang 0.5.18 image.
+    image: lmsysorg/sglang@sha256:9e148f5ac788e856a06166bd6347a831831eb9fcfab4d1770874823a7c29a1a1
+    container_name: sglang-qwen38-27b
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "500m"
+        max-file: "3"
+
+    runtime: nvidia
+
+    ports:
+      - "30000:30000"
+
+    volumes:
+      - /srv/models/Qwen3.8-27B:/models/Qwen3.8-27B:ro
+
+    ipc: host
+
+    gpus:
+      - driver: nvidia
+        device_ids: ["1"]
+        capabilities: [gpu]
+
+    command:
+      - python
+      - -m
+      - sglang.launch_server
+
+      # model
+      - --model-path
+      - /models/Qwen3.8-27B
+
+      - --host
+      - 0.0.0.0
+
+      - --port
+      - "30000"
+
+      # Single A800; reserve enough memory for both the target and MTP state caches.
+      - --tp
+      - "1"
+
+      # dtype
+      - --dtype
+      - bfloat16
+
+      # Model context ceiling; the effective input limit also depends on KV cache capacity.
+      # On one A800 at 0.90 with MTP, startup allocates about 128k cached tokens.
+      - --context-length
+      - "262144"
+
+      # Per-GPU budget; embedding runs separately on GPU 0.
+      - --mem-fraction-static
+      - "0.90"
+
+      # API 模型名称
+      - --served-model-name
+      - qwen3.8-27b
+
+      # tool call
+      - --tool-call-parser
+      - qwen3_coder
+
+      # thinking/reasoning
+      - --reasoning-parser
+      - qwen3
+
+      # cached_tokens 检查
+      - --enable-cache-report
+      - --enable-metrics
+
+      # MTP speculative decoding
+      - --speculative-algorithm
+      - EAGLE
+      - --speculative-num-steps
+      - "3"
+      - --speculative-eagle-topk
+      - "1"
+      - --speculative-num-draft-tokens
+      - "4"
+
+
+    environment:
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:30000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15m
+      retries: 3
+
+    restart: unless-stopped

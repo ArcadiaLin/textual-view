@@ -1,0 +1,55 @@
+services:
+  vllm-qwen3-embed:
+    # Pin the locally installed vLLM 0.21.0 image for reproducible restarts.
+    image: vllm/vllm-openai@sha256:a230095847e93bd4df9888b33dab956fa9504537b828a23657d2b26fed57b5c9
+    container_name: vllm-qwen3-embed
+    runtime: nvidia
+
+    ports:
+      - "8002:8000"
+
+    volumes:
+      - /srv/models/embedding/Qwen/Qwen3-Embedding-8B:/models/Qwen3-Embedding-8B:ro
+
+    ipc: host
+    gpus:
+      - driver: nvidia
+        device_ids: ["0"]
+        capabilities: [gpu]
+
+    command:
+      - --model
+      - /models/Qwen3-Embedding-8B
+      - --runner
+      - pooling
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --dtype
+      - bfloat16
+      # Single-GPU BF16 weights use about 14 GiB; the old 0.10 budget was too small.
+      - --gpu-memory-utilization
+      - "0.40"
+      - --served-model-name
+      - qwen3-embedding-8b
+
+    environment:
+      - TOKENIZERS_PARALLELISM=false
+      - OPENBLAS_NUM_THREADS=1
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10m
+      retries: 3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+    restart: unless-stopped
